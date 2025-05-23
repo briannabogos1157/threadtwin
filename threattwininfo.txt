@@ -1,0 +1,113 @@
+ThreadTwin PRD – Fabric-Powered Dupe Finder (Web App Only)
+
+1. Overview
+Product Name: ThreadTwin
+Version: MVP v1
+Prepared by: Brianna + Team
+Last Updated: May 2025
+
+Summary:
+ThreadTwin is a Gen Z-friendly web platform that helps users find high-quality fashion dupes based on fabric composition, construction, fit, and care instructions — not just visuals or price. It empowers shoppers with a match percentage for transparency, helping them shop smarter while staying stylish on a budget.
+
+⸻
+
+2. Core Feature – Fabric Similarity Score (%)
+
+What It Does:
+Each dupe result shows a % match to the original item based on:
+	•	Fabric composition
+	•	Construction type (ribbed, double-lined, etc.)
+	•	Fit/silhouette
+	•	Care instructions
+
+How It Works (Logic):
+Weighted System:
+	•	Fabric Composition – 40%
+	•	Construction Type – 25%
+	•	Fit/Silhouette – 25%
+	•	Care Instructions – 10%
+
+Matching Algorithms:
+	•	Cosine similarity or ratio comparison for fabric blend
+	•	NLP or Vision API for construction and fit extraction
+	•	Keyword tagging from scraped product descriptions
+	•	Weighted sum = % match
+
+Frontend Display (for each dupe card):
+Color-coded % match badge:
+	•	95–100%: “Exact match”
+	•	80–94%: “Very similar”
+	•	60–79%: “Good dupe”
+	•	Below 60%: “Inspired by”
+
+Tooltip or hover breakdown:
+	•	Fabric: 95%
+	•	Fit: 100%
+	•	Care: 80%
+	•	Construction: 100%
+
+⸻
+
+3. Platform Scope – Web App Only
+
+Core User Flows:
+	•	Homepage: Paste a link or upload image
+	•	Backend: Analyzes product info
+	•	Results Page: Shows affiliate-linked dupes with % match + price + tags
+	•	Filters: Optional — by price range, material, vegan, etc.
+	•	Call to Action: “View More”, “Shop Dupe”, or similar
+
+⸻
+
+4. Revenue Model
+
+Primary:
+	•	Affiliate Links (ShopStyle, Skimlinks, LTK, Amazon)
+
+Secondary (Later):
+	•	Sponsored dupe placements
+	•	Premium tools (save dupes, early access, curated drops)
+
+⸻
+
+5. Target Audience
+	•	Gen Z & Millennial fashionistas
+	•	TikTok + Pinterest style lovers
+	•	Trend chasers looking for “Skims dupes”, “Aritzia vibes”, etc.
+	•	Budget-conscious shoppers who still care about quality
+
+⸻
+
+6. Tech Stack
+	•	Frontend: Next.js + Tailwind CSS
+	•	Backend: Python (FastAPI) or Node.js
+	•	Database: Supabase (user activity, product history)
+	•	APIs:
+	•	ShopStyle / Google Shopping / Skimlinks (for dupes + links)
+	•	Clarifai or OpenAI Vision (optional for image upload matching)
+	•	Cheerio.js or BeautifulSoup (for scraping product data)
+	•	Hosting: Vercel (frontend) + Supabase
+
+⸻
+
+8. MVP Feature Checklist
+	•	Paste product link input
+	•	Backend scrapes fabric, fit, etc.
+	•	Logic calculates similarity %
+	•	Dupe results rendered with badges & prices
+	•	Tooltip match breakdown
+	•	Affiliate tracking on dupe CTAs
+	•	“Under $50” & “Vegan” filters
+	•	Waitlist email capture
+
+⸻
+
+9. Coding Prep Checklist
+	•	Finalize name/domain (ThreadTwin or alt)
+	•	Set up GitHub repo
+	•	Scaffold Next.js + Tailwind frontend
+	•	Create scraping + match logic backend
+	•	Test 10+ real product links with known dupes
+	•	Design simple, aesthetic homepage & results grid
+	•	Email waitlist form on homepage
+	•	Research + integrate affiliate APIs
