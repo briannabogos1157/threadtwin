@@ -87,7 +87,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Routes
-app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/api/analyze', async (req: Request, res: Response) => {
   try {
     console.log('Received analyze request:', req.body);
     const { url } = req.body;
@@ -129,16 +129,14 @@ app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction)
       return res.json(productDetails);
     } catch (error) {
       clearTimeout(timeout);
-      next(error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   } catch (error) {
-    next(error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.post('/api/compare', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/api/compare', async (req: Request, res: Response) => {
   try {
     console.log('Received compare request:', req.body);
     const { originalUrl, dupeUrl } = req.body;
@@ -198,11 +196,9 @@ app.post('/api/compare', async (req: Request, res: Response, next: NextFunction)
       return res.json(result);
     } catch (error) {
       clearTimeout(timeout);
-      next(error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   } catch (error) {
-    next(error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

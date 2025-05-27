@@ -10,7 +10,7 @@ class ProductScraper {
             const element = await page.$(selector);
             if (!element)
                 return '';
-            const text = await page.evaluate((el) => (el === null || el === void 0 ? void 0 : el.textContent) || '', element);
+            const text = await page.evaluate(el => (el === null || el === void 0 ? void 0 : el.textContent) || '', element);
             return text.trim();
         }
         catch (error) {
