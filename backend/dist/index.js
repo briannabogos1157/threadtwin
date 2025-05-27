@@ -17,22 +17,18 @@ const cache = new node_cache_1.default({
     checkperiod: 120,
     useClones: false
 });
-// Rate limiting
 const limiter = (0, express_rate_limit_1.default)({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000,
+    max: 100
 });
-// Middleware
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(limiter);
-// Request logging middleware
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
-// Error handling middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
     console.error('Global error handler:', {
         error: err.message,
         stack: err.stack,
@@ -40,7 +36,6 @@ app.use((err, req, res, next) => {
         method: req.method,
         body: req.body
     });
-    // Handle specific error types
     if (err.message.includes('ECONNREFUSED') || err.message.includes('ETIMEDOUT')) {
         return res.status(503).json({
             error: 'Service temporarily unavailable',
@@ -53,12 +48,11 @@ app.use((err, req, res, next) => {
             details: 'Request took too long to process'
         });
     }
-    res.status(500).json({
+    return res.status(500).json({
         error: 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
     });
 });
-// Validate URL middleware
 const validateUrl = (url) => {
     try {
         const parsedUrl = new URL(url);
@@ -68,8 +62,7 @@ const validateUrl = (url) => {
         return false;
     }
 };
-// Health check endpoint with detailed status
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
     const status = {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -80,7 +73,6 @@ app.get('/api/health', (req, res) => {
     };
     res.json(status);
 });
-// Routes
 app.post('/api/analyze', async (req, res, next) => {
     try {
         console.log('Received analyze request:', req.body);
@@ -91,36 +83,34 @@ app.post('/api/analyze', async (req, res, next) => {
         if (!validateUrl(url)) {
             return res.status(400).json({ error: 'Invalid URL format' });
         }
-        // Check cache first
         const cachedResult = cache.get(url);
         if (cachedResult) {
             console.log('Cache hit for URL:', url);
             return res.json(cachedResult);
         }
         console.log('Analyzing product:', url);
-        // Set timeout for the entire operation
         const timeout = setTimeout(() => {
-            const error = new Error('Request timeout');
-            next(error);
-        }, 30000); // 30 second timeout
+            return res.status(504).json({ error: 'Request timeout' });
+        }, 30000);
         try {
             const productDetails = await scraper_1.default.scrapeProduct(url);
             clearTimeout(timeout);
             if (!productDetails.name) {
                 return res.status(404).json({ error: 'Could not find product details' });
             }
-            // Store in cache
             cache.set(url, productDetails);
             console.log('Product analysis complete:', productDetails.name);
-            res.json(productDetails);
+            return res.json(productDetails);
         }
         catch (error) {
             clearTimeout(timeout);
-            throw error;
+            next(error);
+            return res.status(500).json({ error: 'Internal server error' });
         }
     }
     catch (error) {
         next(error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 app.post('/api/compare', async (req, res, next) => {
@@ -133,7 +123,6 @@ app.post('/api/compare', async (req, res, next) => {
         if (!validateUrl(originalUrl) || !validateUrl(dupeUrl)) {
             return res.status(400).json({ error: 'Invalid URL format' });
         }
-        // Check cache for both products
         const cacheKey = `${originalUrl}:${dupeUrl}`;
         const cachedResult = cache.get(cacheKey);
         if (cachedResult) {
@@ -141,11 +130,9 @@ app.post('/api/compare', async (req, res, next) => {
             return res.json(cachedResult);
         }
         console.log('Comparing products:', { originalUrl, dupeUrl });
-        // Set timeout for the entire operation
         const timeout = setTimeout(() => {
-            const error = new Error('Request timeout');
-            next(error);
-        }, 60000); // 60 second timeout for comparison
+            return res.status(504).json({ error: 'Request timeout' });
+        }, 60000);
         try {
             const [original, dupe] = await Promise.all([
                 scraper_1.default.scrapeProduct(originalUrl),
@@ -155,36 +142,35 @@ app.post('/api/compare', async (req, res, next) => {
             if (!original.name || !dupe.name) {
                 return res.status(404).json({ error: 'Could not find product details for one or both items' });
             }
-            // Calculate similarity
             const matchBreakdown = similarity_1.default.calculateSimilarity(original, dupe);
             const result = {
-                original: { ...original, url: originalUrl },
-                dupe: { ...dupe, url: dupeUrl },
+                original: Object.assign(Object.assign({}, original), { url: originalUrl }),
+                dupe: Object.assign(Object.assign({}, dupe), { url: dupeUrl }),
                 matchBreakdown
             };
-            // Store in cache
             cache.set(cacheKey, result);
             console.log('Comparison complete:', {
                 original: original.name,
                 dupe: dupe.name,
                 totalMatch: matchBreakdown.total
             });
-            res.json(result);
+            return res.json(result);
         }
         catch (error) {
             clearTimeout(timeout);
-            throw error;
+            next(error);
+            return res.status(500).json({ error: 'Internal server error' });
         }
     }
     catch (error) {
         next(error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
-// Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('SIGTERM signal received: closing HTTP server');
     server.close(() => {
@@ -192,3 +178,4 @@ process.on('SIGTERM', () => {
         process.exit(0);
     });
 });
+//# sourceMappingURL=index.js.map

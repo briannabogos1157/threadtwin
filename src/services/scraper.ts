@@ -97,7 +97,7 @@ async function extractText(page: puppeteer.Page, selector: string): Promise<stri
   try {
     const element = await page.$(selector);
     if (!element) return '';
-    const text = await page.evaluate(el => el.textContent || '', element);
+    const text = await page.evaluate((el: HTMLElement) => el.textContent || '', element);
     return text.trim();
   } catch {
     return '';
@@ -107,7 +107,7 @@ async function extractText(page: puppeteer.Page, selector: string): Promise<stri
 async function extractImage(page: puppeteer.Page): Promise<string> {
   try {
     const imgSrc = await page.evaluate(() => {
-      const img = document.querySelector('img.product-image, .product-img img');
+      const img = document.querySelector('img.product-image, .product-img img') as HTMLImageElement | null;
       return img ? (img.getAttribute('src') || img.getAttribute('data-src') || '') : '';
     });
     return imgSrc;
@@ -120,7 +120,7 @@ async function extractList(page: puppeteer.Page, selector: string): Promise<stri
   try {
     const items = await page.evaluate((sel) => {
       const elements = document.querySelectorAll(sel);
-      return Array.from(elements).map(el => el.textContent || '').filter(text => text.trim());
+      return Array.from(elements).map(el => (el as HTMLElement).textContent || '').filter(text => text.trim());
     }, selector);
     return items;
   } catch {

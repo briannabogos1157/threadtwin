@@ -7,10 +7,10 @@ const compute_cosine_similarity_1 = __importDefault(require("compute-cosine-simi
 class SimilarityScorer {
     constructor() {
         this.WEIGHTS = {
-            fabric: 0.4, // 40%
-            construction: 0.25, // 25%
-            fit: 0.25, // 25%
-            care: 0.1 // 10%
+            fabric: 0.4,
+            construction: 0.25,
+            fit: 0.25,
+            care: 0.1
         };
     }
     calculateSimilarity(original, dupe) {
@@ -21,7 +21,6 @@ class SimilarityScorer {
             care: this.calculateCareSimilarity(original.careInstructions || [], dupe.careInstructions || []),
             total: 0
         };
-        // Calculate weighted total
         breakdown.total = Math.round(breakdown.fabric * this.WEIGHTS.fabric +
             breakdown.construction * this.WEIGHTS.construction +
             breakdown.fit * this.WEIGHTS.fit +
@@ -32,11 +31,9 @@ class SimilarityScorer {
         if (!original.length || !dupe.length)
             return 0;
         try {
-            // Convert fabric compositions to vectors
             const allFabrics = Array.from(new Set([...original, ...dupe]));
             const originalVector = this.createFabricVector(original, allFabrics);
             const dupeVector = this.createFabricVector(dupe, allFabrics);
-            // Calculate cosine similarity with null check
             const similarity = (0, compute_cosine_similarity_1.default)(originalVector, dupeVector);
             if (similarity === null || isNaN(similarity)) {
                 return 0;
@@ -71,3 +68,4 @@ class SimilarityScorer {
     }
 }
 exports.default = new SimilarityScorer();
+//# sourceMappingURL=similarity.js.map

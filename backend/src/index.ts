@@ -111,8 +111,7 @@ app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction)
     
     // Set timeout for the entire operation
     const timeout = setTimeout(() => {
-      const error = new Error('Request timeout');
-      next(error);
+      return res.status(504).json({ error: 'Request timeout' });
     }, 30000); // 30 second timeout
 
     try {
@@ -130,10 +129,12 @@ app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction)
       return res.json(productDetails);
     } catch (error) {
       clearTimeout(timeout);
-      throw error;
+      next(error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   } catch (error) {
     next(error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -162,8 +163,7 @@ app.post('/api/compare', async (req: Request, res: Response, next: NextFunction)
     
     // Set timeout for the entire operation
     const timeout = setTimeout(() => {
-      const error = new Error('Request timeout');
-      next(error);
+      return res.status(504).json({ error: 'Request timeout' });
     }, 60000); // 60 second timeout for comparison
 
     try {
@@ -198,10 +198,12 @@ app.post('/api/compare', async (req: Request, res: Response, next: NextFunction)
       return res.json(result);
     } catch (error) {
       clearTimeout(timeout);
-      throw error;
+      next(error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
   } catch (error) {
     next(error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -1,5 +1,4 @@
-import puppeteer, { Page, ElementHandle } from 'puppeteer';
-import cheerio from 'cheerio';
+import puppeteer, { Page } from 'puppeteer';
 
 interface ProductDetails {
   name: string;
@@ -41,7 +40,7 @@ class ProductScraper {
     try {
       const element = await page.$(selector);
       if (!element) return '';
-      const text = await page.evaluate((el: Element) => el.textContent || '', element);
+      const text = await page.evaluate((el) => el?.textContent || '', element);
       return text.trim();
     } catch (error) {
       console.log(`Failed to get text for selector ${selector}:`, error);

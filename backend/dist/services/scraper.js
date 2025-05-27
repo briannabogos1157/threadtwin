@@ -10,7 +10,7 @@ class ProductScraper {
             const element = await page.$(selector);
             if (!element)
                 return '';
-            const text = await page.evaluate((el) => el.textContent || '', element);
+            const text = await page.evaluate((el) => (el === null || el === void 0 ? void 0 : el.textContent) || '', element);
             return text.trim();
         }
         catch (error) {
@@ -25,7 +25,7 @@ class ProductScraper {
         catch (error) {
             if (retries > 0) {
                 console.log(`Retrying operation, ${retries} attempts remaining`);
-                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between retries
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 return this.retryOperation(operation, retries - 1);
             }
             throw error;
@@ -43,7 +43,6 @@ class ProductScraper {
             const page = await browser.newPage();
             await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
             await page.setDefaultNavigationTimeout(ProductScraper.PAGE_TIMEOUT);
-            // Navigate with retry
             await this.retryOperation(async () => {
                 await Promise.race([
                     page.goto(url, { waitUntil: 'networkidle0' }),
@@ -51,7 +50,6 @@ class ProductScraper {
                 ]);
             });
             console.log('Page loaded successfully');
-            // Initialize product details
             const details = {
                 name: '',
                 price: 0,
@@ -62,17 +60,14 @@ class ProductScraper {
                 images: [],
                 url: url
             };
-            // Log the page title for debugging
             const title = await page.title();
             console.log('Page title:', title);
-            // Extract product name (common selectors)
             details.name = await this.safeEval(page, 'h1') ||
                 await this.safeEval(page, '.product-name') ||
                 await this.safeEval(page, '.product-title') ||
                 await this.safeEval(page, '[class*="product"][class*="title"]') ||
                 await this.safeEval(page, '[class*="product"][class*="name"]');
             console.log('Found product name:', details.name);
-            // Extract price with better handling
             const priceText = await this.safeEval(page, '.price') ||
                 await this.safeEval(page, '.product-price') ||
                 await this.safeEval(page, '[class*="price"]');
@@ -83,7 +78,6 @@ class ProductScraper {
                 console.warn('Failed to extract price:', error);
                 details.price = 0;
             }
-            // Extract product description and details
             const productDescription = await this.safeEval(page, '.product-description') ||
                 await this.safeEval(page, '.details') ||
                 await this.safeEval(page, '[class*="description"]') ||
@@ -91,19 +85,14 @@ class ProductScraper {
                 await this.safeEval(page, 'p');
             console.log('Found product description length:', productDescription.length);
             console.log('Product description:', productDescription);
-            // Parse fabric composition
             details.fabricComposition = this.extractKeywords(productDescription, ProductScraper.FABRIC_KEYWORDS);
             console.log('Found fabric composition:', details.fabricComposition);
-            // Parse construction details
             details.construction = this.extractKeywords(productDescription, ProductScraper.CONSTRUCTION_KEYWORDS);
             console.log('Found construction details:', details.construction);
-            // Parse fit details
             details.fit = this.extractKeywords(productDescription, ProductScraper.FIT_KEYWORDS);
             console.log('Found fit details:', details.fit);
-            // Parse care instructions
             details.careInstructions = this.extractKeywords(productDescription, ProductScraper.CARE_KEYWORDS);
             console.log('Found care instructions:', details.careInstructions);
-            // Enhanced image extraction
             try {
                 const images = await page.$$eval('img[src]', imgs => imgs.map(img => {
                     const src = img.getAttribute('src');
@@ -114,7 +103,6 @@ class ProductScraper {
                     !src.includes('icon') &&
                     !src.includes('logo') &&
                     /\.(jpg|jpeg|png|webp|gif)/i.test(src)));
-                // Ensure absolute URLs
                 details.images = images.map(img => {
                     try {
                         return new URL(img, url).href;
@@ -154,7 +142,6 @@ class ProductScraper {
     }
     extractPrice(priceText) {
         console.log('Extracting price from:', priceText);
-        // Handle various price formats
         const cleanText = priceText.replace(/[^\d.,]/g, '');
         const match = cleanText.match(/([\d,]+\.?\d*)|(\d*\.\d+)/);
         if (!match)
@@ -192,6 +179,7 @@ ProductScraper.CARE_KEYWORDS = [
     'iron', 'do not bleach', 'gentle cycle', 'cold water'
 ];
 ProductScraper.MAX_RETRIES = 3;
-ProductScraper.SCRAPE_TIMEOUT = 60000; // 60 seconds
-ProductScraper.PAGE_TIMEOUT = 30000; // 30 seconds
+ProductScraper.SCRAPE_TIMEOUT = 60000;
+ProductScraper.PAGE_TIMEOUT = 30000;
 exports.default = new ProductScraper();
+//# sourceMappingURL=scraper.js.map
