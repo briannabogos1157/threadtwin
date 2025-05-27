@@ -74,7 +74,7 @@ const validateUrl = (url: string): boolean => {
 };
 
 // Health check endpoint with detailed status
-app.get('/health', (req: Request, res: Response) => {
+app.get('/api/health', (req: Request, res: Response) => {
   const status = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -87,7 +87,7 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // Routes
-app.post('/analyze', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('Received analyze request:', req.body);
     const { url } = req.body;
@@ -137,7 +137,7 @@ app.post('/analyze', async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-app.post('/compare', async (req: Request, res: Response, next: NextFunction) => {
+app.post('/api/compare', async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('Received compare request:', req.body);
     const { originalUrl, dupeUrl } = req.body;

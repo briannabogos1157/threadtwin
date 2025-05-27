@@ -3,23 +3,54 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = __importDefault(require("axios"));
-const cheerio_1 = __importDefault(require("cheerio"));
+const puppeteer_1 = __importDefault(require("puppeteer"));
 class ProductScraper {
+    async safeEval(page, selector) {
+        try {
+            const element = await page.$(selector);
+            if (!element)
+                return '';
+            const text = await page.evaluate((el) => el.textContent || '', element);
+            return text.trim();
+        }
+        catch (error) {
+            console.log(`Failed to get text for selector ${selector}:`, error);
+            return '';
+        }
+    }
+    async retryOperation(operation, retries = ProductScraper.MAX_RETRIES) {
+        try {
+            return await operation();
+        }
+        catch (error) {
+            if (retries > 0) {
+                console.log(`Retrying operation, ${retries} attempts remaining`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between retries
+                return this.retryOperation(operation, retries - 1);
+            }
+            throw error;
+        }
+    }
     async scrapeProduct(url) {
         console.log('Starting to scrape URL:', url);
+        let browser;
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Scraping timeout')), ProductScraper.SCRAPE_TIMEOUT));
         try {
-            const response = await axios_1.default.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Connection': 'keep-alive',
-                },
-                timeout: 10000, // 10 second timeout
+            browser = await puppeteer_1.default.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
             });
-            console.log('Successfully fetched URL, status:', response.status);
-            const $ = cheerio_1.default.load(response.data);
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+            await page.setDefaultNavigationTimeout(ProductScraper.PAGE_TIMEOUT);
+            // Navigate with retry
+            await this.retryOperation(async () => {
+                await Promise.race([
+                    page.goto(url, { waitUntil: 'networkidle0' }),
+                    timeoutPromise
+                ]);
+            });
+            console.log('Page loaded successfully');
             // Initialize product details
             const details = {
                 name: '',
@@ -31,26 +62,35 @@ class ProductScraper {
                 images: [],
                 url: url
             };
+            // Log the page title for debugging
+            const title = await page.title();
+            console.log('Page title:', title);
             // Extract product name (common selectors)
-            details.name = $('h1').first().text().trim() ||
-                $('.product-name').first().text().trim() ||
-                $('.product-title').first().text().trim() ||
-                $('[class*="product"][class*="title"]').first().text().trim() ||
-                $('[class*="product"][class*="name"]').first().text().trim();
+            details.name = await this.safeEval(page, 'h1') ||
+                await this.safeEval(page, '.product-name') ||
+                await this.safeEval(page, '.product-title') ||
+                await this.safeEval(page, '[class*="product"][class*="title"]') ||
+                await this.safeEval(page, '[class*="product"][class*="name"]');
             console.log('Found product name:', details.name);
-            // Extract price (common selectors)
-            const priceText = $('.price').first().text().trim() ||
-                $('.product-price').first().text().trim() ||
-                $('[class*="price"]').first().text().trim();
-            details.price = this.extractPrice(priceText);
-            console.log('Found price:', details.price);
+            // Extract price with better handling
+            const priceText = await this.safeEval(page, '.price') ||
+                await this.safeEval(page, '.product-price') ||
+                await this.safeEval(page, '[class*="price"]');
+            try {
+                details.price = this.extractPrice(priceText);
+            }
+            catch (error) {
+                console.warn('Failed to extract price:', error);
+                details.price = 0;
+            }
             // Extract product description and details
-            const productDescription = $('.product-description').text() ||
-                $('.details').text() ||
-                $('[class*="description"]').text() ||
-                $('[class*="details"]').text() ||
-                $('p').text();
+            const productDescription = await this.safeEval(page, '.product-description') ||
+                await this.safeEval(page, '.details') ||
+                await this.safeEval(page, '[class*="description"]') ||
+                await this.safeEval(page, '[class*="details"]') ||
+                await this.safeEval(page, 'p');
             console.log('Found product description length:', productDescription.length);
+            console.log('Product description:', productDescription);
             // Parse fabric composition
             details.fabricComposition = this.extractKeywords(productDescription, ProductScraper.FABRIC_KEYWORDS);
             console.log('Found fabric composition:', details.fabricComposition);
@@ -63,14 +103,31 @@ class ProductScraper {
             // Parse care instructions
             details.careInstructions = this.extractKeywords(productDescription, ProductScraper.CARE_KEYWORDS);
             console.log('Found care instructions:', details.careInstructions);
-            // Extract product images
-            $('img').each((_, element) => {
-                const src = $(element).attr('src');
-                if (src && this.isProductImage(src)) {
-                    details.images.push(src);
-                }
-            });
-            console.log('Found number of images:', details.images.length);
+            // Enhanced image extraction
+            try {
+                const images = await page.$$eval('img[src]', imgs => imgs.map(img => {
+                    const src = img.getAttribute('src');
+                    const dataSrc = img.getAttribute('data-src');
+                    return src || dataSrc;
+                })
+                    .filter((src) => src !== null &&
+                    !src.includes('icon') &&
+                    !src.includes('logo') &&
+                    /\.(jpg|jpeg|png|webp|gif)/i.test(src)));
+                // Ensure absolute URLs
+                details.images = images.map(img => {
+                    try {
+                        return new URL(img, url).href;
+                    }
+                    catch (_a) {
+                        return img;
+                    }
+                });
+            }
+            catch (error) {
+                console.error('Failed to extract images:', error);
+                details.images = [];
+            }
             if (!details.name) {
                 throw new Error('Could not find product name');
             }
@@ -84,11 +141,27 @@ class ProductScraper {
             });
             throw new Error(`Failed to scrape product details: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+        finally {
+            if (browser) {
+                try {
+                    await browser.close();
+                }
+                catch (error) {
+                    console.error('Error closing browser:', error);
+                }
+            }
+        }
     }
     extractPrice(priceText) {
         console.log('Extracting price from:', priceText);
-        const match = priceText.match(/[\d,.]+/);
-        const price = match ? parseFloat(match[0].replace(/,/g, '')) : 0;
+        // Handle various price formats
+        const cleanText = priceText.replace(/[^\d.,]/g, '');
+        const match = cleanText.match(/([\d,]+\.?\d*)|(\d*\.\d+)/);
+        if (!match)
+            return 0;
+        const price = parseFloat(match[0].replace(/,/g, ''));
+        if (isNaN(price))
+            return 0;
         console.log('Extracted price:', price);
         return price;
     }
@@ -100,17 +173,6 @@ class ProductScraper {
             }
             return found;
         });
-    }
-    isProductImage(url) {
-        // Filter out small icons, logos, etc.
-        const isProduct = url.includes('product') ||
-            url.includes('gallery') ||
-            url.includes('images') ||
-            url.match(/\.(jpg|jpeg|png|webp)/i) !== null;
-        if (isProduct) {
-            console.log('Found product image:', url);
-        }
-        return isProduct;
     }
 }
 ProductScraper.FABRIC_KEYWORDS = [
@@ -129,4 +191,7 @@ ProductScraper.CARE_KEYWORDS = [
     'machine wash', 'hand wash', 'dry clean', 'tumble dry',
     'iron', 'do not bleach', 'gentle cycle', 'cold water'
 ];
+ProductScraper.MAX_RETRIES = 3;
+ProductScraper.SCRAPE_TIMEOUT = 60000; // 60 seconds
+ProductScraper.PAGE_TIMEOUT = 30000; // 30 seconds
 exports.default = new ProductScraper();
