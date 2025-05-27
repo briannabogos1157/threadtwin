@@ -2,11 +2,18 @@
   "name": "threadtwin",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +26,7 @@
     "@types/react-dom": "18.2.18",
     "autoprefixer": "10.4.17",
     "next": "14.1.0",
+    "node-cache": "^5.1.2",
     "pg": "^8.16.0",
     "postcss": "8.4.33",
     "prisma": "^6.8.2",

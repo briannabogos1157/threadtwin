@@ -40,7 +40,17 @@ export default function Product() {
       const result = await ThreadTwinAPI.compareProducts(originalProduct.url, dupeUrl);
       setComparisonResult(result);
     } catch (err) {
-      setError('Failed to compare products. Please check the URL and try again.');
+      let errorMessage = 'Failed to compare products. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('Invalid URL')) {
+          errorMessage = 'Please enter a valid product URL.';
+        } else if (err.message.includes('Could not find product details')) {
+          errorMessage = 'Could not find product details. Please check if the URL is correct.';
+        } else if (err.message.includes('timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        }
+      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -135,30 +145,32 @@ export default function Product() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center border rounded-lg p-2">
                       <p className="text-sm font-medium">Fabric Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.fabric} />
+                      <MatchBadge score={comparisonResult.matchBreakdown.fabric} label="Fabric" weight={0.4} />
                     </div>
                     <div className="text-center border rounded-lg p-2">
                       <p className="text-sm font-medium">Fit Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.fit} />
+                      <MatchBadge score={comparisonResult.matchBreakdown.fit} label="Fit" weight={0.25} />
                     </div>
                     <div className="text-center border rounded-lg p-2">
-                      <p className="text-sm font-medium">Construction</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.construction} />
+                      <p className="text-sm font-medium">Construction Match</p>
+                      <MatchBadge score={comparisonResult.matchBreakdown.construction} label="Construction" weight={0.25} />
                     </div>
                     <div className="text-center border rounded-lg p-2">
                       <p className="text-sm font-medium">Care Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.care} />
+                      <MatchBadge score={comparisonResult.matchBreakdown.care} label="Care" weight={0.1} />
                     </div>
                   </div>
 
                   <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h5 className="font-medium">{comparisonResult.dupe.name}</h5>
+                      <div className="flex-1">
+                        <p className="text-lg font-semibold">{comparisonResult.dupe.name}</p>
                         <p className="text-sm text-gray-600">${comparisonResult.dupe.price}</p>
                       </div>
                       <MatchBadge 
                         score={comparisonResult.matchBreakdown.total}
+                        label="Overall Match"
+                        weight={1.0}
                         showTooltip={true}
                         breakdown={comparisonResult.matchBreakdown}
                       />

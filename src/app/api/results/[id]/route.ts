@@ -1,35 +1,16 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Match } from '@/types/prisma';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate database connection
-    try {
-      await prisma.$connect();
-    } catch (error) {
-      console.error('Database connection error:', error);
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 503 }
-      );
-    }
-
-    // Fetch the original product with its matches
     const originalProduct = await prisma.product.findUnique({
-      where: { id },
+      where: {
+        id: params.id,
+      },
       include: {
         originalMatches: {
           include: {
@@ -40,15 +21,11 @@ export async function GET(
     });
 
     if (!originalProduct) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Format the response to match the expected structure
-    const response = {
-      originalProduct: {
+    return NextResponse.json({
+      product: {
         id: originalProduct.id,
         url: originalProduct.url,
         title: originalProduct.title,
@@ -59,7 +36,7 @@ export async function GET(
         care: originalProduct.care,
         construction: originalProduct.construction,
       },
-      similarProducts: originalProduct.originalMatches.map((match) => ({
+      similarProducts: originalProduct.originalMatches.map((match: Match) => ({
         product: {
           id: match.similarProduct.id,
           url: match.similarProduct.url,
@@ -71,35 +48,20 @@ export async function GET(
           care: match.similarProduct.care,
           construction: match.similarProduct.construction,
         },
-        scores: {
+        similarity: {
+          overall: match.totalScore,
           fabric: match.fabricScore,
-          construction: match.constructionScore,
           fit: match.fitScore,
           care: match.careScore,
-          total: match.totalScore,
+          construction: match.constructionScore,
         },
       })),
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error('Error retrieving results:', error);
-    
-    // Handle specific Prisma errors
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        return NextResponse.json(
-          { error: 'Unique constraint violation' },
-          { status: 409 }
-        );
-      }
-    }
-
+    console.error('Error fetching results:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch results' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

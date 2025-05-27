@@ -3,11 +3,13 @@
 interface MatchBadgeProps {
   label: string;
   score: number;
-  weight: string;
+  weight: number;
   large?: boolean;
+  showTooltip?: boolean;
+  breakdown?: any;
 }
 
-export default function MatchBadge({ label, score, weight, large = false }: MatchBadgeProps) {
+export default function MatchBadge({ label, score, weight, large = false, showTooltip = false, breakdown }: MatchBadgeProps) {
   const getColorClass = (score: number) => {
     if (score >= 90) return 'bg-green-100 text-green-800';
     if (score >= 70) return 'bg-blue-100 text-blue-800';
@@ -22,7 +24,7 @@ export default function MatchBadge({ label, score, weight, large = false }: Matc
     <div className={baseClasses}>
       <div>
         <p className={`font-medium ${textClasses}`}>{label}</p>
-        <p className="text-xs opacity-75">Weight: {weight}</p>
+        <p className="text-xs opacity-75">Weight: {(weight * 100).toFixed(0)}%</p>
       </div>
       <div className={`font-bold ${large ? 'text-2xl' : 'text-lg'}`}>
         {score.toFixed(1)}%

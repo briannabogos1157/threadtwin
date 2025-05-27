@@ -1,35 +1,13 @@
 {
   "version": 2,
-  "cleanUrls": true,
-  "domains": ["threadtwin.com", "www.threadtwin.com"],
-  "redirects": [
-    {
-      "source": "https://www.threadtwin.com/:path*",
-      "destination": "https://threadtwin.com/:path*",
-      "permanent": true
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "functions": {
+    "api/**/*.ts": {
+      "memory": 3008
     }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
-  ]
+  },
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
+  "outputDirectory": ".next"
 } 

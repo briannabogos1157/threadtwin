@@ -27,13 +27,13 @@ app.use(express.json());
 app.use(limiter);
 
 // Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error('Global error handler:', {
     error: err.message,
     stack: err.stack,
@@ -57,7 +57,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  res.status(500).json({
+  return res.status(500).json({
     error: 'Internal server error',
     details: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
   });
@@ -74,7 +74,7 @@ const validateUrl = (url: string): boolean => {
 };
 
 // Health check endpoint with detailed status
-app.get('/api/health', (req: Request, res: Response) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   const status = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -127,7 +127,7 @@ app.post('/api/analyze', async (req: Request, res: Response, next: NextFunction)
       cache.set(url, productDetails);
       console.log('Product analysis complete:', productDetails.name);
       
-      res.json(productDetails);
+      return res.json(productDetails);
     } catch (error) {
       clearTimeout(timeout);
       throw error;
@@ -195,7 +195,7 @@ app.post('/api/compare', async (req: Request, res: Response, next: NextFunction)
         totalMatch: matchBreakdown.total
       });
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       clearTimeout(timeout);
       throw error;

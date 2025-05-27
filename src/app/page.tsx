@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Home() {
   const [productUrl, setProductUrl] = useState('');
@@ -38,17 +40,40 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center">
+            <Image
+              src="/logo.png"
+              alt="ThreadTwin Logo"
+              width={140}
+              height={32}
+              priority
+            />
+          </div>
+          <div className="flex space-x-6">
+            <Link href="/" className="text-gray-700 hover:text-gray-900 font-medium">
+              Home
+            </Link>
+            <Link href="/about" className="text-gray-700 hover:text-gray-900 font-medium">
+              About
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            ThreadTwin
+            Find Your Perfect Style Match
           </h1>
           <p className="text-xl text-gray-600">
-            Find similar fashion items based on fabric, fit, and construction
+            Compare fashion items based on fabric, fit, and construction
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-xl p-8">
+        <div className="bg-white rounded-lg shadow-xl p-8 mb-12">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label
@@ -84,6 +109,34 @@ export default function Home() {
               {isLoading ? 'Analyzing...' : 'Find Similar Items'}
             </button>
           </form>
+        </div>
+
+        {/* How it Works Section */}
+        <div className="bg-white rounded-lg shadow-xl p-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-blue-600 text-xl font-semibold">1</span>
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Paste a URL</h3>
+              <p className="text-gray-600">Enter the URL of any clothing item you love</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-blue-600 text-xl font-semibold">2</span>
+              </div>
+              <h3 className="font-semibold text-lg mb-2">AI Analysis</h3>
+              <p className="text-gray-600">Our AI analyzes the fabric, fit, and construction</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-blue-600 text-xl font-semibold">3</span>
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Find Matches</h3>
+              <p className="text-gray-600">Compare with other products to find the perfect match</p>
+            </div>
+          </div>
         </div>
       </div>
     </main>

@@ -11,40 +11,34 @@ datasource db {
 }
 
 model Product {
-  id           String   @id @default(cuid())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  url          String   @unique
-  title        String
-  image        String
-  price        String
-  fabric       String[]
-  fit          String[]
-  care         String[]
-  construction String[]
-
-  // Relations
-  originalMatches    ProductMatch[] @relation("OriginalProduct")
-  similarToMatches   ProductMatch[] @relation("SimilarProduct")
+  id            String         @id @default(cuid())
+  url           String         @unique
+  name          String
+  price         String
+  image         String
+  fabric        String[]
+  fit           String[]
+  care          String[]
+  construction  String[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  originalMatches ProductMatch[] @relation("OriginalProduct")
+  dupeMatches    ProductMatch[] @relation("DupeProduct")
 }
 
 model ProductMatch {
-  id                String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  // Match scores
+  id               String   @id @default(cuid())
+  originalProduct  Product  @relation("OriginalProduct", fields: [originalProductId], references: [id])
+  originalProductId String
+  dupeProduct      Product  @relation("DupeProduct", fields: [dupeProductId], references: [id])
+  dupeProductId    String
   fabricScore      Float
-  constructionScore Float
   fitScore         Float
   careScore        Float
+  constructionScore Float
   totalScore       Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  // Relations
-  originalProductId String
-  similarProductId String
-  originalProduct  Product  @relation("OriginalProduct", fields: [originalProductId], references: [id])
-  similarProduct   Product  @relation("SimilarProduct", fields: [similarProductId], references: [id])
-
-  @@unique([originalProductId, similarProductId])
+  @@unique([originalProductId, dupeProductId])
 } 

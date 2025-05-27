@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MatchBadge from '@/components/MatchBadge';
 import ProductCard from '@/components/ProductCard';
@@ -31,13 +31,13 @@ interface ComparisonResult {
   }[];
 }
 
-export default function ResultsPage() {
+function ResultsContent() {
   const searchParams = useSearchParams();
-  const [results, setResults] = useState<ComparisonResult | null>(null);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [results, setResults] = React.useState<ComparisonResult | null>(null);
+  const [error, setError] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchResults = async () => {
       const id = searchParams.get('id');
       if (!id) {
@@ -110,29 +110,29 @@ export default function ResultsPage() {
                     <MatchBadge
                       label="Fabric"
                       score={scores.fabric}
-                      weight="40%"
+                      weight={0.4}
                     />
                     <MatchBadge
                       label="Construction"
                       score={scores.construction}
-                      weight="25%"
+                      weight={0.25}
                     />
                     <MatchBadge
                       label="Fit"
                       score={scores.fit}
-                      weight="25%"
+                      weight={0.25}
                     />
                     <MatchBadge
                       label="Care"
                       score={scores.care}
-                      weight="10%"
+                      weight={0.1}
                     />
                   </div>
                   <div className="mt-6">
                     <MatchBadge
                       label="Overall Match"
                       score={scores.total}
-                      weight="100%"
+                      weight={1.0}
                       large
                     />
                   </div>
@@ -143,5 +143,13 @@ export default function ResultsPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function Results() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResultsContent />
+    </Suspense>
   );
 } 
