@@ -23,7 +23,7 @@ const limiter = rateLimit({
 
 // CORS configuration
 const corsOptions = {
-  origin: ['https://threadtwin.com', 'https://www.threadtwin.com', 'http://localhost:3000'],
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
