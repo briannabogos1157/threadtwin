@@ -2,60 +2,184 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 249, 250, 251;
+/* Custom styles */
+body {
+  @apply antialiased;
 }
 
 @layer base {
+  html {
+    @apply h-full;
+  }
   body {
-    @apply text-gray-900 bg-white;
+    @apply h-full bg-white text-gray-900 antialiased;
+  }
+  h1 {
+    @apply text-4xl font-bold mb-8;
+  }
+  h2 {
+    @apply text-3xl font-semibold mb-6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight;
+    @apply font-semibold tracking-tight;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-6 py-2 bg-black text-white rounded-full text-lg font-medium 
-           hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors text-lg font-medium;
   }
 
   .input-primary {
-    @apply px-6 py-2 border border-gray-200 rounded-full text-lg
-           focus:ring-2 focus:ring-black focus:border-transparent
-           placeholder-gray-400;
+    @apply px-6 py-2 border border-gray-200 rounded-full text-lg focus:ring-2 focus:ring-black focus:border-transparent;
   }
 
   .card {
-    @apply border rounded-lg overflow-hidden hover:shadow-lg transition-shadow;
+    @apply border rounded-lg overflow-hidden;
   }
 
   .card-image {
-    @apply w-full h-48 bg-gray-100 object-cover;
+    @apply w-full h-48 bg-gray-100;
   }
 
   .card-content {
     @apply p-4;
   }
+
+  .icon-container {
+    @apply w-16 h-16 mb-4 flex items-center justify-center;
+  }
+
+  .icon {
+    @apply w-8 h-8 text-gray-800;
+  }
+
+  .section-title {
+    @apply text-3xl font-bold mb-8 text-center;
+  }
+
+  .nav-link {
+    @apply text-xl text-gray-600 hover:text-black transition-colors;
+  }
+
+  .test-style {
+    @apply text-blue-600 font-bold;
+  }
+
+  .btn {
+    @apply bg-black text-white px-4 py-2 rounded-full;
+  }
+
+  .search-container {
+    @apply flex w-full max-w-3xl mx-auto rounded-xl overflow-hidden border border-gray-200 shadow-sm;
+  }
+
+  .search-input {
+    @apply w-full px-6 py-4 text-lg border-none focus:outline-none placeholder-gray-400;
+  }
+
+  .search-button {
+    @apply px-8 py-4 bg-black text-white text-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap;
+  }
+
+  .how-it-works-grid {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto my-16;
+  }
+
+  .feature-card {
+    @apply flex flex-col items-center p-8 bg-gray-50 rounded-xl text-center transition-transform hover:scale-105;
+  }
+
+  .featured-dupes-grid {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-8 my-16;
+  }
+
+  .dupe-card {
+    @apply bg-gray-50 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .dupe-image {
+    @apply w-full h-64 object-cover bg-gray-100;
+  }
+
+  .dupe-content {
+    @apply p-6;
+  }
+
+  .match-percentage {
+    @apply text-2xl font-bold mb-2;
+  }
+
+  .match-quality {
+    @apply text-lg text-gray-600 mb-2;
+  }
+
+  .price {
+    @apply text-xl font-semibold text-black;
+  }
+
+  .prose {
+    @apply max-w-none;
+  }
+
+  .prose p {
+    @apply text-gray-600 leading-relaxed;
+  }
+
+  .prose a {
+    @apply text-black hover:text-gray-600 transition-colors no-underline;
+  }
+
+  .container {
+    @apply max-w-7xl mx-auto px-4;
+  }
 }
 
-/* Custom animations */
-@keyframes float {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Grid layouts */
+.features-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto;
+}
+
+.dupes-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-6;
+}
+
+/* Responsive padding */
+.section-padding {
+  @apply p-8;
+}
+
+/* Container width */
+.container-width {
+  @apply max-w-6xl mx-auto px-4;
+}
+
+.test-tailwind {
+  @apply text-blue-500 font-bold;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .search-container {
+    @apply flex-col;
+  }
+  
+  .search-button {
+    @apply w-full rounded-none;
+  }
+  
+  .feature-card {
+    @apply hover:scale-100;
+  }
 }
