@@ -24,6 +24,25 @@ interface ComparisonResult {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+const handleApiError = async (response: Response) => {
+  const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+  
+  switch (response.status) {
+    case 429:
+      throw new Error(`Rate limit exceeded. ${error.retryAfter ? `Please try again in ${Math.ceil(error.retryAfter)} seconds.` : 'Please try again later.'}`);
+    case 404:
+      throw new Error(error.error || 'Resource not found');
+    case 400:
+      throw new Error(error.error || 'Invalid request');
+    case 503:
+      throw new Error(error.error || 'Service temporarily unavailable');
+    case 504:
+      throw new Error(error.error || 'Request timeout');
+    default:
+      throw new Error(error.error || 'An unexpected error occurred');
+  }
+};
+
 export const analyzeProduct = async (url: string) => {
   const response = await fetch(`${API_BASE_URL}/api/analyze`, {
     method: 'POST',
@@ -34,7 +53,7 @@ export const analyzeProduct = async (url: string) => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to analyze product');
+    await handleApiError(response);
   }
 
   return response.json();
@@ -50,7 +69,7 @@ export const compareProducts = async (productIds: string[]) => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to compare products');
+    await handleApiError(response);
   }
 
   return response.json();
@@ -60,7 +79,7 @@ export const checkHealth = async () => {
   const response = await fetch(`${API_BASE_URL}/api/health`);
   
   if (!response.ok) {
-    throw new Error('API health check failed');
+    await handleApiError(response);
   }
 
   return response.json();
@@ -77,8 +96,7 @@ export const ThreadTwinAPI = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to compare products');
+      await handleApiError(response);
     }
 
     return response.json();
@@ -94,8 +112,7 @@ export const ThreadTwinAPI = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to analyze product');
+      await handleApiError(response);
     }
 
     return response.json();

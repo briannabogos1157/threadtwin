@@ -2,13 +2,17 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import NodeCache from 'node-cache';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 
 dotenv.config();
 
 const app = express();
+
+// Trust proxy (needed for rate limiting behind reverse proxy)
+app.set('trust proxy', 1);
+
 const cache = new NodeCache({ 
   stdTTL: 3600,
   checkperiod: 120,
@@ -18,7 +22,15 @@ const cache = new NodeCache({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  handler: (req: any, res: Response) => {
+    res.status(429).json({
+      error: 'Too many requests, please try again later.',
+      retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() - Date.now()) / 1000
+    });
+  }
 });
 
 // CORS configuration
@@ -26,6 +38,7 @@ const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
   credentials: true
 };
 
