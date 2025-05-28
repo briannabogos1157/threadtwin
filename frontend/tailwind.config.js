@@ -9,12 +9,8 @@ module.exports = {
     extend: {
       colors: {
         primary: '#0070f3',
-        secondary: '#1a1a1a',
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [],
 } 
