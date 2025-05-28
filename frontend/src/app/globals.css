@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-.btn-primary {
-  @apply px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity;
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-2 bg-black text-white rounded-lg text-lg font-medium 
+           hover:bg-gray-800 transition-colors;
+  }
 } 
