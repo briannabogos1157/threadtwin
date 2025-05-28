@@ -2,101 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles */
-body {
-  @apply antialiased;
+:root {
+  --foreground: #000000;
+  --background: #ffffff;
 }
 
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* BASE STYLES */
 @layer base {
   html {
-    @apply h-full;
+    @apply h-full antialiased;
   }
+  
   body {
-    @apply h-full bg-white text-gray-900 antialiased;
-  }
-  h1 {
-    @apply text-4xl font-bold mb-8;
-  }
-  h2 {
-    @apply text-3xl font-semibold mb-6;
+    @apply h-full bg-white text-gray-900;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold tracking-tight;
   }
 }
 
+/* COMPONENT STYLES */
 @layer components {
-  .btn-primary {
-    @apply px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors text-lg font-medium;
+  .container {
+    @apply max-w-7xl mx-auto px-4;
   }
 
-  .input-primary {
-    @apply px-6 py-2 border border-gray-200 rounded-full text-lg focus:ring-2 focus:ring-black focus:border-transparent;
+  .section {
+    @apply py-16 sm:py-20 lg:py-24;
   }
 
-  .card {
-    @apply border rounded-lg overflow-hidden;
+  .nav-link {
+    @apply text-lg text-gray-600 transition-colors duration-200;
   }
 
-  .card-image {
-    @apply w-full h-48 bg-gray-100;
+  .nav-link:hover {
+    @apply text-gray-900;
   }
 
-  .card-content {
-    @apply p-4;
+  .search-container {
+    @apply flex w-full max-w-4xl mx-auto rounded-2xl border border-gray-200 shadow-sm;
+  }
+
+  .search-input {
+    @apply w-full px-6 py-4 text-lg outline-none border-none;
+  }
+
+  .search-button {
+    @apply px-8 py-4 bg-black text-white text-lg font-medium transition-colors duration-200;
+  }
+
+  .search-button:hover {
+    @apply bg-gray-900;
+  }
+
+  .feature-card {
+    @apply flex flex-col items-center p-8 bg-gray-50 rounded-2xl text-center transition-shadow duration-200;
+  }
+
+  .feature-card:hover {
+    @apply shadow-md;
   }
 
   .icon-container {
-    @apply w-16 h-16 mb-4 flex items-center justify-center;
+    @apply w-16 h-16 mb-4 flex items-center justify-center rounded-xl bg-gray-100;
   }
 
   .icon {
     @apply w-8 h-8 text-gray-800;
   }
 
-  .section-title {
-    @apply text-3xl font-bold mb-8 text-center;
-  }
-
-  .nav-link {
-    @apply text-xl text-gray-600 hover:text-black transition-colors;
-  }
-
-  .test-style {
-    @apply text-blue-600 font-bold;
-  }
-
-  .btn {
-    @apply bg-black text-white px-4 py-2 rounded-full;
-  }
-
-  .search-container {
-    @apply flex w-full max-w-3xl mx-auto rounded-xl overflow-hidden border border-gray-200 shadow-sm;
-  }
-
-  .search-input {
-    @apply w-full px-6 py-4 text-lg border-none focus:outline-none placeholder-gray-400;
-  }
-
-  .search-button {
-    @apply px-8 py-4 bg-black text-white text-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap;
-  }
-
-  .how-it-works-grid {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto my-16;
-  }
-
-  .feature-card {
-    @apply flex flex-col items-center p-8 bg-gray-50 rounded-xl text-center transition-transform hover:scale-105;
-  }
-
   .featured-dupes-grid {
-    @apply grid grid-cols-1 md:grid-cols-3 gap-8 my-16;
+    @apply grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8;
   }
 
   .dupe-card {
-    @apply bg-gray-50 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-white rounded-2xl overflow-hidden shadow-sm transition-shadow duration-200;
+  }
+
+  .dupe-card:hover {
+    @apply shadow-md;
   }
 
   .dupe-image {
@@ -104,82 +102,86 @@ body {
   }
 
   .dupe-content {
-    @apply p-6;
+    @apply p-6 space-y-2;
   }
 
   .match-percentage {
-    @apply text-2xl font-bold mb-2;
+    @apply text-2xl font-bold text-black;
   }
 
   .match-quality {
-    @apply text-lg text-gray-600 mb-2;
+    @apply text-base text-gray-600;
   }
 
   .price {
-    @apply text-xl font-semibold text-black;
+    @apply text-xl font-semibold text-black mt-4;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-md transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-black text-white hover:bg-gray-800;
   }
 
   .prose {
-    @apply max-w-none;
+    @apply max-w-none space-y-6;
   }
 
   .prose p {
-    @apply text-gray-600 leading-relaxed;
+    @apply text-gray-600 leading-relaxed text-lg;
   }
 
   .prose a {
-    @apply text-black hover:text-gray-600 transition-colors no-underline;
+    @apply text-black hover:text-gray-600 transition-colors duration-200 no-underline;
+  }
+
+  .section-title {
+    @apply text-3xl sm:text-4xl font-bold mb-8 text-center;
+  }
+}
+
+/* CUSTOM UTILITIES */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* RESPONSIVE TWEAKS */
+@media (max-width: 768px) {
+  .search-container {
+    flex-direction: column;
+  }
+
+  .search-button {
+    width: 100%;
+  }
+
+  .section {
+    @apply py-12;
   }
 
   .container {
-    @apply max-w-7xl mx-auto px-4;
+    @apply px-4;
   }
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-/* Grid layouts */
-.features-grid {
-  @apply grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto;
-}
-
-.dupes-grid {
-  @apply grid grid-cols-1 md:grid-cols-3 gap-6;
-}
-
-/* Responsive padding */
-.section-padding {
-  @apply p-8;
-}
-
-/* Container width */
-.container-width {
-  @apply max-w-6xl mx-auto px-4;
-}
-
-.test-tailwind {
-  @apply text-blue-500 font-bold;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .search-container {
-    @apply flex-col;
-  }
-  
-  .search-button {
-    @apply w-full rounded-none;
-  }
-  
-  .feature-card {
-    @apply hover:scale-100;
+/* PRINT STYLES */
+@media print {
+  .no-print {
+    @apply hidden;
   }
 }
