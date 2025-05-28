@@ -8,10 +8,7 @@ export const metadata: Metadata = {
   title: 'ThreadTwin - Fashion Dupe Finder',
   description: 'Find similar clothing items based on fabric composition, fit, and construction details.',
   icons: {
-    icon: [
-      { url: '/favicon.ico' },
-      { url: '/icon.png', type: 'image/png' },
-    ],
+    icon: '/favicon.ico',
   },
 };
 

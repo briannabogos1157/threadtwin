@@ -1,22 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  poweredByHeader: false,
+  swcMinify: true,
   async rewrites() {
-    return {
-      beforeFiles: [
-        // Handle API routes
-        {
-          source: '/api/:path*',
-          destination: '/api/:path*',
-        },
-        // Handle all other routes
-        {
-          source: '/:path*',
-          destination: '/',
-        },
-      ],
-    };
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:3001/api/:path*',
+      },
+    ];
   },
   async headers() {
     return [
