@@ -11,7 +11,7 @@ dotenv.config();
 const app = express();
 
 // Trust proxy (needed for rate limiting behind reverse proxy)
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 const cache = new NodeCache({ 
   stdTTL: 3600,
@@ -19,7 +19,7 @@ const cache = new NodeCache({
   useClones: false
 });
 
-// Rate limiting
+// Rate limiting configuration
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
@@ -30,6 +30,14 @@ const limiter = rateLimit({
       error: 'Too many requests, please try again later.',
       retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() - Date.now()) / 1000
     });
+  },
+  keyGenerator: (req: Request): string => {
+    // Use X-Forwarded-For header when behind a proxy
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    const ip = xForwardedFor ? 
+      (typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0] : xForwardedFor[0]) : 
+      req.ip;
+    return ip || req.socket.remoteAddress || 'unknown';
   }
 });
 
