@@ -2,16 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground: #000000;
-  --background: #ffffff;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
 /* BASE STYLES */
 @layer base {
   html {
@@ -38,7 +28,7 @@ body {
 /* COMPONENT STYLES */
 @layer components {
   .container {
-    @apply max-w-7xl mx-auto px-4;
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   .section {
@@ -46,11 +36,7 @@ body {
   }
 
   .nav-link {
-    @apply text-lg text-gray-600 transition-colors duration-200;
-  }
-
-  .nav-link:hover {
-    @apply text-gray-900;
+    @apply text-lg text-gray-600 hover:text-gray-900 transition-colors duration-200;
   }
 
   .search-container {
@@ -62,19 +48,11 @@ body {
   }
 
   .search-button {
-    @apply px-8 py-4 bg-black text-white text-lg font-medium transition-colors duration-200;
-  }
-
-  .search-button:hover {
-    @apply bg-gray-900;
+    @apply px-8 py-4 bg-black text-white text-lg font-medium hover:bg-gray-900 transition-colors duration-200;
   }
 
   .feature-card {
-    @apply flex flex-col items-center p-8 bg-gray-50 rounded-2xl text-center transition-shadow duration-200;
-  }
-
-  .feature-card:hover {
-    @apply shadow-md;
+    @apply flex flex-col items-center p-8 bg-gray-50 rounded-2xl text-center hover:shadow-md transition-shadow duration-200;
   }
 
   .icon-container {
@@ -90,11 +68,7 @@ body {
   }
 
   .dupe-card {
-    @apply bg-white rounded-2xl overflow-hidden shadow-sm transition-shadow duration-200;
-  }
-
-  .dupe-card:hover {
-    @apply shadow-md;
+    @apply bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200;
   }
 
   .dupe-image {
@@ -122,7 +96,7 @@ body {
   }
 
   .btn-primary {
-    @apply bg-black text-white hover:bg-gray-800;
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity;
   }
 
   .prose {
@@ -145,17 +119,13 @@ body {
 /* CUSTOM UTILITIES */
 @layer utilities {
   .animate-fade-in {
+    @apply opacity-0 translate-y-2;
     animation: fadeIn 0.5s ease-out forwards;
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
     to {
-      opacity: 1;
-      transform: translateY(0);
+      @apply opacity-100 translate-y-0;
     }
   }
 }
@@ -163,11 +133,11 @@ body {
 /* RESPONSIVE TWEAKS */
 @media (max-width: 768px) {
   .search-container {
-    flex-direction: column;
+    @apply flex-col;
   }
 
   .search-button {
-    width: 100%;
+    @apply w-full;
   }
 
   .section {
@@ -184,4 +154,9 @@ body {
   .no-print {
     @apply hidden;
   }
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
 }
