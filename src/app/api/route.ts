@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 
 export async function GET(request: Request) {
-  // Always redirect to the frontend for the root path
   const url = new URL(request.url);
+  
+  // Only respond if the path is exactly /api
   if (url.pathname === '/api') {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.json({
+      status: 'API is running',
+      endpoints: {
+        health: '/api/health',
+        analyze: '/api/analyze',
+        compare: '/api/compare',
+      },
+    });
   }
 
-  // For other API routes, return the API status
-  return NextResponse.json({
-    status: 'API is running',
-    endpoints: {
-      health: '/api/health',
-      analyze: '/api/analyze',
-      compare: '/api/compare',
-    },
-  });
+  // For any other path, redirect to the frontend
+  return NextResponse.redirect(new URL('/', request.url));
 } 

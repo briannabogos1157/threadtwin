@@ -2,6 +2,22 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Handle API routes
+        {
+          source: '/api/:path*',
+          destination: '/api/:path*',
+        },
+        // Handle all other routes
+        {
+          source: '/:path*',
+          destination: '/',
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {
@@ -29,23 +45,7 @@ const nextConfig = {
           }
         ],
       },
-    ]
-  },
-  async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: '/',
-          destination: '/index'
-        }
-      ],
-      fallback: [
-        {
-          source: '/api/:path*',
-          destination: '/api/:path*'
-        }
-      ]
-    }
+    ];
   },
   async redirects() {
     return [
