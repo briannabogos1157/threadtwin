@@ -1,59 +1,66 @@
 # ThreadTwin
 
-ThreadTwin is a fashion dupe finder web application that helps users find similar clothing items based on fabric composition, fit, care instructions, and construction details.
+ThreadTwin is an AI-powered fashion companion that helps you find affordable alternatives to your favorite designer pieces. Using advanced technology, we analyze fabric patterns, textures, and styles to find the closest matches at better prices.
 
 ## Features
 
-- Product URL analysis
-- Fabric composition matching
-- Construction comparison
-- Fit analysis
-- Care instructions matching
-- Weighted similarity scoring
-- Responsive design
-- Real-time results
+- Paste product links or upload images to find similar items
+- AI-powered fabric and style analysis
+- Match percentage and quality ratings
+- Price comparisons
+- Modern, responsive UI
 
 ## Tech Stack
 
-- Frontend: Next.js, TypeScript, Tailwind CSS
-- Backend: Node.js, PostgreSQL
-- ORM: Prisma
-- Deployment: Vercel
-- Domain: GoDaddy
+- Next.js 14
+- React
+- Tailwind CSS
+- TypeScript
 
 ## Getting Started
 
-1. Clone the repository
+1. Clone the repository:
 ```bash
-git clone https://github.com/briannabogos1157/threadtwin.git
-cd threadtwin
+git clone https://github.com/yourusername/ThreadTwin.git
+cd ThreadTwin
 ```
 
-2. Install dependencies
+2. Install dependencies:
 ```bash
+# Install root dependencies
+npm install
+
+# Install frontend dependencies
+cd frontend
 npm install
 ```
 
-3. Set up environment variables
-Create a `.env` file with:
-```
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/threadtwin?schema=public"
-```
-
-4. Run database migrations
-```bash
-npx prisma migrate dev
-```
-
-5. Start the development server
+3. Run the development server:
 ```bash
 npm run dev
 ```
 
-## Contributing
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+## Project Structure
+
+```
+ThreadTwin/
+├── frontend/           # Next.js frontend application
+│   ├── src/           # Source code
+│   │   ├── app/       # App router pages
+│   │   ├── components/# React components
+│   │   └── styles/    # Global styles
+│   └── public/        # Static assets
+└── README.md
+```
+
+## Created By
+
+ThreadTwin is created by Brianna Bogos under Find The Perfect Outfit LLC.
+
+Follow us on Instagram: [@briannabogoss](https://instagram.com/briannabogoss)
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/) 
+Copyright © 2024 Find The Perfect Outfit LLC. All rights reserved. 

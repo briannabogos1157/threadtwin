@@ -7,10 +7,12 @@ node_modules
 /coverage
 
 # next.js
-.next/
-out/
-build
-dist/
+/.next/
+/out/
+/frontend/.next/
+
+# production
+/build
 
 # misc
 .DS_Store
