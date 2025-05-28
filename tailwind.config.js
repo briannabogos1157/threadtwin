@@ -8,8 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#FF4785', // You can adjust this color to match your brand
-        secondary: '#0070f3',
+        primary: '#0070f3', // Using Next.js blue as primary color
       },
     },
   },
