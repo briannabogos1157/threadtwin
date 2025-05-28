@@ -73,6 +73,18 @@ const validateUrl = (url: string): boolean => {
   }
 };
 
+// Add root route handler
+app.get('/', (_req: Request, res: Response) => {
+  res.json({ 
+    status: 'API is running',
+    endpoints: {
+      health: '/api/health',
+      analyze: '/api/analyze',
+      compare: '/api/compare'
+    }
+  });
+});
+
 // Health check endpoint with detailed status
 app.get('/api/health', (_req: Request, res: Response) => {
   const status = {
