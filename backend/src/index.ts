@@ -10,9 +10,6 @@ dotenv.config();
 
 const app = express();
 
-// Trust proxy - must be first before any other middleware
-app.enable('trust proxy');
-
 // CORS configuration
 const corsOptions = {
   origin: '*',
@@ -41,6 +38,7 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => false, // Never skip rate limiting
   handler: (req: any, res: Response) => {
     res.status(429).json({
       error: 'Too many requests, please try again later.',
