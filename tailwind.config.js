@@ -8,9 +8,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: 'var(--primary-color)',
+          light: 'var(--primary-color-light)',
+          dark: 'var(--primary-color-dark)',
+        },
+      },
+      backgroundColor: {
+        primary: 'var(--primary-color)',
+      },
+      textColor: {
         primary: 'var(--primary-color)',
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
 } 

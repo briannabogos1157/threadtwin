@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import NodeCache from 'node-cache';
-import rateLimit, { RateLimitRequestHandler } from 'express-rate-limit';
+import rateLimit from 'express-rate-limit';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 
@@ -10,36 +10,8 @@ dotenv.config();
 
 const app = express();
 
-// Trust proxy (needed for rate limiting behind reverse proxy)
-app.set('trust proxy', true);
-
-const cache = new NodeCache({ 
-  stdTTL: 3600,
-  checkperiod: 120,
-  useClones: false
-});
-
-// Rate limiting configuration
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  handler: (req: any, res: Response) => {
-    res.status(429).json({
-      error: 'Too many requests, please try again later.',
-      retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() - Date.now()) / 1000
-    });
-  },
-  keyGenerator: (req: Request): string => {
-    // Use X-Forwarded-For header when behind a proxy
-    const xForwardedFor = req.headers['x-forwarded-for'];
-    const ip = xForwardedFor ? 
-      (typeof xForwardedFor === 'string' ? xForwardedFor.split(',')[0] : xForwardedFor[0]) : 
-      req.ip;
-    return ip || req.socket.remoteAddress || 'unknown';
-  }
-});
+// Trust proxy - must be first before any other middleware
+app.enable('trust proxy');
 
 // CORS configuration
 const corsOptions = {
@@ -50,9 +22,34 @@ const corsOptions = {
   credentials: true
 };
 
-// Middleware
+// Apply CORS first
 app.use(cors(corsOptions));
+
+// Then basic middleware
 app.use(express.json());
+
+// Cache configuration
+const cache = new NodeCache({ 
+  stdTTL: 3600,
+  checkperiod: 120,
+  useClones: false
+});
+
+// Rate limiting configuration
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: any, res: Response) => {
+    res.status(429).json({
+      error: 'Too many requests, please try again later.',
+      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) - Date.now()) / 1000
+    });
+  }
+});
+
+// Apply rate limiter after other middleware
 app.use(limiter);
 
 // Request logging middleware

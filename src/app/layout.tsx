@@ -6,7 +6,13 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'ThreadTwin - Fashion Dupe Finder',
-  description: 'Find fashion dupes based on fabric composition, fit, care instructions, and construction details.',
+  description: 'Find similar clothing items based on fabric composition, fit, and construction details.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+  },
 };
 
 export default function RootLayout({

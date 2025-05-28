@@ -4,17 +4,18 @@
 
 :root {
   --primary-color: #0070f3;
+  --primary-color-light: #3291ff;
+  --primary-color-dark: #0050c9;
 }
 
 @layer base {
   body {
-    @apply antialiased;
+    @apply bg-white text-gray-900;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity;
-    background-color: var(--primary-color);
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity;
   }
 } 
