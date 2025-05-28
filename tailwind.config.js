@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#0070f3', // Using Next.js blue as primary color
+        primary: 'var(--primary-color)',
       },
     },
   },

@@ -1,10 +1,12 @@
-import React from 'react';
-import '../styles/globals.css';
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ThreadTwin - Fabric-Powered Dupe Finder',
-  description: 'Find high-quality fashion dupes based on fabric composition, construction, fit, and care instructions.',
+  title: 'ThreadTwin - Fashion Dupe Finder',
+  description: 'Find fashion dupes based on fabric composition, fit, care instructions, and construction details.',
 };
 
 export default function RootLayout({
@@ -14,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 } 

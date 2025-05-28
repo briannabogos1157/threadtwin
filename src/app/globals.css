@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #0070f3;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 text-white rounded-lg hover:opacity-90 transition-opacity;
+    background-color: var(--primary-color);
+  }
+} 
