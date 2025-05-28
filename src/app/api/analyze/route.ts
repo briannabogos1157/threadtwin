@@ -67,17 +67,17 @@ export async function POST(request: Request) {
       );
     }
     
-    // Store in database
+    // Store in database with proper mapping
     const savedProduct = await prisma.product.create({
       data: {
-        url: productDetails.url || '',
-        name: productDetails.name || '',
-        price: productDetails.price || '',
-        image: productDetails.image || '',
-        fabric: productDetails.fabric || [],
-        fit: productDetails.fit || [],
-        care: productDetails.care || [],
-        construction: productDetails.construction || [],
+        url: url,
+        name: productDetails.name,
+        price: productDetails.price,
+        image: productDetails.image,
+        fabric: productDetails.fabric,
+        fit: productDetails.fit,
+        care: productDetails.care,
+        construction: productDetails.construction
       }
     });
 
