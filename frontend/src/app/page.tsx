@@ -6,6 +6,7 @@ import { ProductDetails } from '@/types/product';
 import { AxiosError } from 'axios';
 import { LinkIcon, FabricIcon, SweaterIcon } from '@/components/Icons';
 import ProductCard from '@/components/ProductCard';
+import Image from 'next/image';
 
 interface ErrorResponse {
   error: string;
@@ -34,98 +35,78 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      {/* Hero Section */}
-      <section className="relative py-20 px-8">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          <h1 className="text-5xl font-bold tracking-tight text-gray-900">
-            Find Your Perfect Style Twin
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Discover affordable alternatives to your favorite fashion pieces with our AI-powered matching system.
-          </p>
-          <form onSubmit={handleAnalyze} className="max-w-2xl mx-auto">
-            <div className="flex gap-2 shadow-lg rounded-full bg-white p-2">
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Paste a product URL"
-                className="flex-1 px-6 py-3 text-lg border-none focus:ring-0 rounded-full"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-8 py-3 bg-black text-white rounded-full text-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <span className="animate-spin">⏳</span>
-                    <span>Analyzing...</span>
-                  </>
-                ) : (
-                  'Find Dupes'
-                )}
-              </button>
-            </div>
-          </form>
+    <div className="min-h-screen bg-white text-black font-sans">
+      {/* Header */}
+      <header className="w-full border-b p-4 flex justify-between items-center">
+        <h1 className="text-xl font-semibold">ThreadTwin</h1>
+        <nav className="space-x-6">
+          <a href="/" className="hover:underline">Home</a>
+          <a href="/about" className="hover:underline">About</a>
+        </nav>
+      </header>
+
+      {/* Hero */}
+      <section className="text-center p-8 border-b">
+        <h2 className="text-2xl font-medium mb-4">Paste a product link or upload an image</h2>
+        <div className="flex justify-center gap-4">
+          <input 
+            type="text" 
+            placeholder="Find Dupes"
+            className="input-primary w-96" 
+          />
+          <button className="btn-primary">Find Dupes</button>
         </div>
       </section>
 
-      {/* How it Works Section */}
-      <section className="py-20 px-8 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-16">How it Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-8 mb-4 flex justify-center items-center transform hover:scale-105 transition-transform">
-                <LinkIcon className="w-16 h-16" />
-              </div>
-              <h3 className="text-xl font-semibold">Paste Link</h3>
-              <p className="text-gray-600">Share your favorite fashion piece with us</p>
+      {/* How it Works */}
+      <section className="p-8 border-b">
+        <h3 className="text-xl font-medium mb-6 text-center">How it Works</h3>
+        <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-100 mx-auto rounded-lg flex items-center justify-center mb-3">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
             </div>
-            <div className="text-center space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-8 mb-4 flex justify-center items-center transform hover:scale-105 transition-transform">
-                <FabricIcon className="w-16 h-16" />
-              </div>
-              <h3 className="text-xl font-semibold">Smart Analysis</h3>
-              <p className="text-gray-600">Our AI analyzes fabric, style, and construction</p>
+            <p className="font-medium">Paste Link</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-100 mx-auto rounded-lg flex items-center justify-center mb-3">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
-            <div className="text-center space-y-4">
-              <div className="bg-gray-50 rounded-2xl p-8 mb-4 flex justify-center items-center transform hover:scale-105 transition-transform">
-                <SweaterIcon className="w-16 h-16" />
-              </div>
-              <h3 className="text-xl font-semibold">Find Matches</h3>
-              <p className="text-gray-600">Get personalized dupe recommendations</p>
+            <p className="font-medium">Analyze Fabric</p>
+          </div>
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gray-100 mx-auto rounded-lg flex items-center justify-center mb-3">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
             </div>
+            <p className="font-medium">Find Dupes</p>
           </div>
         </div>
       </section>
 
-      {/* Featured Dupes Section */}
-      <section className="py-20 px-8">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-12">Featured Matches</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <ProductCard
-              matchPercentage={92}
-              matchQuality="Excellent Match"
-              price={79}
-              imageUrl="/featured-1.jpg"
-            />
-            <ProductCard
-              matchPercentage={87}
-              matchQuality="Great Alternative"
-              price={65}
-              imageUrl="/featured-2.jpg"
-            />
-            <ProductCard
-              matchPercentage={83}
-              matchQuality="Smart Choice"
-              price={49}
-              imageUrl="/featured-3.jpg"
-            />
-          </div>
+      {/* Featured Dupes */}
+      <section className="p-8">
+        <h3 className="text-xl font-medium mb-6">Featured Dupes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { match: 80, quality: 'Very similar', price: 50 },
+            { match: 64, quality: 'Good dupe', price: 45 },
+            { match: 76, quality: 'Fair dupe', price: 33 },
+          ].map((dupe, i) => (
+            <div key={i} className="border rounded-lg overflow-hidden">
+              <div className="w-full h-48 bg-gray-100" />
+              <div className="p-4">
+                <p className="font-semibold">{dupe.match}% match</p>
+                <p className="text-sm text-gray-600">{dupe.quality}</p>
+                <p className="font-medium mt-1">${dupe.price}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -152,6 +133,6 @@ export default function Home() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 } 

@@ -25,7 +25,21 @@
   }
 
   .input-primary {
-    @apply px-4 py-2 border-gray-200 rounded-full focus:ring-2 focus:ring-black focus:border-transparent;
+    @apply px-6 py-2 border border-gray-200 rounded-full text-lg
+           focus:ring-2 focus:ring-black focus:border-transparent
+           placeholder-gray-400;
+  }
+
+  .card {
+    @apply border rounded-lg overflow-hidden hover:shadow-lg transition-shadow;
+  }
+
+  .card-image {
+    @apply w-full h-48 bg-gray-100 object-cover;
+  }
+
+  .card-content {
+    @apply p-4;
   }
 }
 
