@@ -22,48 +22,46 @@ interface ComparisonResult {
   matchBreakdown: MatchBreakdown;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-export const ThreadTwinAPI = {
-  async analyzeProduct(url: string): Promise<ProductDetails> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
-      });
+export const analyzeProduct = async (url: string) => {
+  const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ url }),
+  });
 
-      if (!response.ok) {
-        throw new Error('Failed to analyze product');
-      }
+  if (!response.ok) {
+    throw new Error('Failed to analyze product');
+  }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error analyzing product:', error);
-      throw error;
-    }
-  },
+  return response.json();
+};
 
-  async compareProducts(originalUrl: string, dupeUrl: string): Promise<ComparisonResult> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/compare`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ originalUrl, dupeUrl }),
-      });
+export const compareProducts = async (productIds: string[]) => {
+  const response = await fetch(`${API_BASE_URL}/api/compare`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ productIds }),
+  });
 
-      if (!response.ok) {
-        throw new Error('Failed to compare products');
-      }
+  if (!response.ok) {
+    throw new Error('Failed to compare products');
+  }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Error comparing products:', error);
-      throw error;
-    }
-  },
+  return response.json();
+};
+
+export const checkHealth = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/health`);
+  
+  if (!response.ok) {
+    throw new Error('API health check failed');
+  }
+
+  return response.json();
 }; 

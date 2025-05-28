@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { analyzeProduct } from '../services/api';
 
 export default function Home() {
   const [productUrl, setProductUrl] = useState('');
@@ -17,19 +18,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: productUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze product');
-      }
-
-      const data = await response.json();
+      const data = await analyzeProduct(productUrl);
       router.push(`/results?id=${data.id}`);
     } catch (err) {
       setError('Failed to analyze product. Please check the URL and try again.');
