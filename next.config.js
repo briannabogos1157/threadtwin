@@ -32,12 +32,17 @@ const nextConfig = {
     ]
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
     return {
+      beforeFiles: [
+        {
+          source: '/',
+          destination: '/index'
+        }
+      ],
       fallback: [
         {
           source: '/api/:path*',
-          destination: `${apiUrl}/api/:path*`
+          destination: '/api/:path*'
         }
       ]
     }
