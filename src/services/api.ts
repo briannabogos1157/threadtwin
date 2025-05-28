@@ -64,4 +64,40 @@ export const checkHealth = async () => {
   }
 
   return response.json();
+};
+
+export const ThreadTwinAPI = {
+  async compareProducts(originalUrl: string, dupeUrl: string) {
+    const response = await fetch('/api/compare', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ originalUrl, dupeUrl }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to compare products');
+    }
+
+    return response.json();
+  },
+
+  async analyzeProduct(url: string) {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to analyze product');
+    }
+
+    return response.json();
+  }
 }; 

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import NodeCache from 'node-cache';
 import scraper from '@/services/scraper';
 import { prisma } from '@/lib/prisma';
+import { ProductDetails } from '@/types/product';
 
 const cache = new NodeCache({ 
   stdTTL: 3600,
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
 
     console.log('Analyzing product:', url);
     
-    const productDetails = await scraper.scrapeProduct(url);
+    const productDetails = await scraper.scrapeProduct(url) as ProductDetails;
       
     if (!productDetails.name) {
       return NextResponse.json(
@@ -68,7 +69,16 @@ export async function POST(request: Request) {
     
     // Store in database
     const savedProduct = await prisma.product.create({
-      data: productDetails
+      data: {
+        url: productDetails.url || '',
+        name: productDetails.name || '',
+        price: productDetails.price || '',
+        image: productDetails.image || '',
+        fabric: productDetails.fabric || [],
+        fit: productDetails.fit || [],
+        care: productDetails.care || [],
+        construction: productDetails.construction || [],
+      }
     });
 
     // Store in cache

@@ -1,133 +1,70 @@
 import puppeteer from 'puppeteer';
+import { ProductDetails } from '@/types/product';
 
-interface ProductDetails {
-  name: string;
-  price: string;
-  image: string;
-  fabric: string[];
-  fit: string[];
-  care: string[];
-  construction: string[];
-}
+class ProductScraper {
+  private browser: any = null;
 
-async function scrapeProduct(url: string): Promise<ProductDetails> {
-  let browser = null;
-  try {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-extensions'
-      ]
-    });
+  async scrapeProduct(url: string): Promise<ProductDetails> {
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
+      });
 
-    const page = await browser.newPage();
-    await page.setDefaultNavigationTimeout(30000);
-    
-    // Minimize memory usage
-    await page.setRequestInterception(true);
-    page.on('request', (request) => {
-      if (
-        request.resourceType() === 'image' ||
-        request.resourceType() === 'stylesheet' ||
-        request.resourceType() === 'font'
-      ) {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
+      const page = await browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle0' });
 
-    // Create a timeout promise
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Scraping timeout')), 30000);
-    });
+      const productDetails = await page.evaluate(() => {
+        // Extract product details from the page
+        const name = document.querySelector('h1')?.textContent || '';
+        const price = document.querySelector('.price')?.textContent || '';
+        const image = document.querySelector('img[itemprop="image"]')?.getAttribute('src') || '';
+        
+        // Extract fabric details
+        const fabricDetails = Array.from(document.querySelectorAll('.fabric-details li'))
+          .map(el => el.textContent || '')
+          .filter(Boolean);
 
-    // Race between the scraping and timeout
-    const productDetails = await Promise.race([
-      (async () => {
-        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        // Extract fit details
+        const fitDetails = Array.from(document.querySelectorAll('.fit-details li'))
+          .map(el => el.textContent || '')
+          .filter(Boolean);
 
-        const details: ProductDetails = {
-          name: await extractText(page, 'h1, .product-name, .product-title'),
-          price: await extractText(page, '.price, .product-price'),
-          image: await extractImage(page),
-          fabric: await extractList(page, '.fabric-details li, .materials li'),
-          fit: await extractList(page, '.fit-details li, .fit li'),
-          care: await extractList(page, '.care-instructions li, .care li'),
-          construction: await extractList(page, '.construction-details li, .construction li')
-        };
+        // Extract care instructions
+        const careInstructions = Array.from(document.querySelectorAll('.care-instructions li'))
+          .map(el => el.textContent || '')
+          .filter(Boolean);
 
-        if (!details.name) {
-          throw new Error('Could not find product name');
-        }
+        // Extract construction details
+        const constructionDetails = Array.from(document.querySelectorAll('.construction-details li'))
+          .map(el => el.textContent || '')
+          .filter(Boolean);
 
-        return details;
-      })(),
-      timeout
-    ]);
+        return {
+          url,
+          name,
+          price,
+          image,
+          fabric: fabricDetails,
+          fit: fitDetails,
+          care: careInstructions,
+          construction: constructionDetails
+        } as ProductDetails;
+      });
 
-    return productDetails;
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message === 'Scraping timeout') {
-        throw new Error('Product scraping timed out. Please try again.');
-      }
+      await browser.close();
+      return productDetails;
+    } catch (error) {
+      if (browser) await browser.close();
       throw error;
     }
-    throw new Error('An unexpected error occurred while scraping the product.');
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (error) {
-        console.error('Error closing browser:', error);
-      }
-    }
   }
 }
 
-async function extractText(page: puppeteer.Page, selector: string): Promise<string> {
-  try {
-    const element = await page.$(selector);
-    if (!element) return '';
-    const text = await page.evaluate((el: HTMLElement) => el.textContent || '', element);
-    return text.trim();
-  } catch {
-    return '';
-  }
-}
-
-async function extractImage(page: puppeteer.Page): Promise<string> {
-  try {
-    const imgSrc = await page.evaluate(() => {
-      const img = document.querySelector('img.product-image, .product-img img') as HTMLImageElement | null;
-      return img ? (img.getAttribute('src') || img.getAttribute('data-src') || '') : '';
-    });
-    return imgSrc;
-  } catch {
-    return '';
-  }
-}
-
-async function extractList(page: puppeteer.Page, selector: string): Promise<string[]> {
-  try {
-    const items = await page.evaluate((sel) => {
-      const elements = document.querySelectorAll(sel);
-      return Array.from(elements).map(el => (el as HTMLElement).textContent || '').filter(text => text.trim());
-    }, selector);
-    return items;
-  } catch {
-    return [];
-  }
-}
-
-export default {
-  scrapeProduct
-}; 
+export default new ProductScraper(); 

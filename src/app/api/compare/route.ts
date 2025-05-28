@@ -4,6 +4,7 @@ import NodeCache from 'node-cache';
 import scraper from '@/services/scraper';
 import similarityScorer from '@/services/similarity';
 import { prisma } from '@/lib/prisma';
+import { ProductDetails } from '@/types/product';
 
 const cache = new NodeCache({ 
   stdTTL: 3600,
@@ -136,17 +137,22 @@ export async function POST(request: Request) {
 
 async function getOrCreateProduct(url: string) {
   // Check if product exists
-  let product = await prisma.product.findUnique({
-    where: { url }
-  });
-
+  let product = await prisma.product.findUnique({ where: { url } });
+  
   if (!product) {
-    // Scrape and create product
-    const productDetails = await scraper.scrapeProduct(url);
-    if (!productDetails.name) return null;
-
+    const productDetails = await scraper.scrapeProduct(url) as ProductDetails;
+    
     product = await prisma.product.create({
-      data: productDetails
+      data: {
+        url: productDetails.url || '',
+        name: productDetails.name || '',
+        price: productDetails.price || '',
+        image: productDetails.image || '',
+        fabric: productDetails.fabric || [],
+        fit: productDetails.fit || [],
+        care: productDetails.care || [],
+        construction: productDetails.construction || [],
+      }
     });
   }
 
