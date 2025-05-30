@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Set the base URL for all axios requests
 const apiUrl = process.env.NODE_ENV === 'production' 
-  ? 'https://api.threadtwin.com'  // Production API URL
-  : 'http://localhost:3001';      // Local development URL
+  ? 'https://threadtwin.vercel.app'  // Production API URL on Vercel
+  : 'http://localhost:3001';         // Local development URL
 
 console.log('Configuring axios with base URL:', apiUrl);
 axios.defaults.baseURL = apiUrl;
@@ -33,16 +33,13 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Enhanced error logging
-    const errorDetails = {
+    console.error('API Error:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
       url: error.config?.url,
-      fullUrl: error.config?.baseURL + error.config?.url,
-      method: error.config?.method
-    };
-    console.error('API Error:', errorDetails);
+      fullUrl: error.config?.baseURL + error.config?.url
+    });
     return Promise.reject(error);
   }
 ); 
