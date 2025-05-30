@@ -31,7 +31,7 @@ const ProductSearch: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    const searchUrl = `/skimlinks/search?query=${encodeURIComponent(query.trim())}`;
+    const searchUrl = `/api/skimlinks/search?query=${encodeURIComponent(query.trim())}`;
     console.log('Sending request to:', searchUrl);
 
     try {
@@ -46,7 +46,11 @@ const ProductSearch: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Full error details:', err);
-      setError(err.response?.data?.error || 'Failed to process request. Please try again.');
+      const errorMessage = err.response?.data?.error || 
+        err.response?.data?.message || 
+        err.message || 
+        'Failed to process request. Please try again.';
+      setError(errorMessage);
       console.error('Search error:', err);
     } finally {
       setLoading(false);

@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Set the base URL for all axios requests
 const apiUrl = process.env.NODE_ENV === 'production' 
-  ? 'https://threadtwin.com/api'  // Production API URL on same domain
+  ? 'https://api.threadtwin.com'  // Production API URL
   : 'http://localhost:3001';      // Local development URL
 
 console.log('Configuring axios with base URL:', apiUrl);
@@ -11,7 +11,9 @@ axios.defaults.baseURL = apiUrl;
 // Add request interceptor for error handling
 axios.interceptors.request.use(
   (config) => {
-    console.log('Making request to:', config.url);
+    // Log the full URL being requested
+    const fullUrl = `${axios.defaults.baseURL}${config.url}`;
+    console.log('Making request to:', fullUrl);
     return config;
   },
   (error) => {
@@ -31,12 +33,16 @@ axios.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', {
+    // Enhanced error logging
+    const errorDetails = {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      url: error.config?.url
-    });
+      url: error.config?.url,
+      fullUrl: error.config?.baseURL + error.config?.url,
+      method: error.config?.method
+    };
+    console.error('API Error:', errorDetails);
     return Promise.reject(error);
   }
 ); 
