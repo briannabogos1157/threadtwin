@@ -13,12 +13,16 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: ['https://threadtwin.com', 'https://www.threadtwin.com'],
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://threadtwin.com', 'https://www.threadtwin.com', 'https://threadtwin.vercel.app']
+    : '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
   credentials: true
 };
+
+console.log('Configuring CORS with options:', corsOptions);
 
 // Apply CORS first
 app.use(cors(corsOptions));
@@ -53,7 +57,7 @@ app.use(limiter);
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
   next();
 });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../config/axios';
 
@@ -19,6 +19,11 @@ const ProductSearch: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Log the current axios base URL when component mounts
+  useEffect(() => {
+    console.log('Current API URL:', axios.defaults.baseURL);
+  }, []);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
@@ -26,14 +31,21 @@ const ProductSearch: React.FC = () => {
     setLoading(true);
     setError(null);
 
+    const searchUrl = `${axios.defaults.baseURL}/api/skimlinks/search?query=${encodeURIComponent(query.trim())}`;
+    console.log('Sending request to:', searchUrl);
+
     try {
+      console.log('Starting search with query:', query);
       const response = await axios.get(`/api/skimlinks/search?query=${encodeURIComponent(query.trim())}`);
+      console.log('Search response:', response.data);
+      
       setProducts(response.data.products || []);
       
       if (response.data.products?.length === 0) {
         setError('No products found. Try a different search term or URL.');
       }
     } catch (err: any) {
+      console.error('Full error details:', err);
       setError(err.response?.data?.error || 'Failed to process request. Please try again.');
       console.error('Search error:', err);
     } finally {
