@@ -5,6 +5,7 @@ import NodeCache from 'node-cache';
 import rateLimit from 'express-rate-limit';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
+import skimlinksRoutes from './routes/skimlinks.routes';
 
 dotenv.config();
 
@@ -104,7 +105,8 @@ app.get('/', (_req: Request, res: Response) => {
     endpoints: {
       health: '/api/health',
       analyze: '/api/analyze',
-      compare: '/api/compare'
+      compare: '/api/compare',
+      skimlinks: '/api/skimlinks/search'
     }
   });
 });
@@ -238,6 +240,9 @@ app.post('/api/compare', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// Register routes
+app.use('/api/skimlinks', skimlinksRoutes);
 
 const PORT = process.env.PORT || 3001;
 
