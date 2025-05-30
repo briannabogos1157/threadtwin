@@ -74,8 +74,41 @@ export class SkimlinksService {
     }
   }
 
+  static async getProductByUrl(url: string): Promise<ProductSearchResult> {
+    try {
+      console.log('Getting affiliate link for direct URL:', url);
+      const affiliateUrl = await this.generateAffiliateLink(url);
+      
+      // For direct URLs, we create a basic product result
+      return {
+        id: url, // Using URL as ID since we don't have a product ID
+        title: 'Direct Product Link',
+        description: 'Product from direct URL',
+        price: 0, // We don't have price information for direct URLs
+        currency: 'USD',
+        merchant: new URL(url).hostname,
+        imageUrl: '', // No image available for direct URLs
+        productUrl: url,
+        affiliateUrl
+      };
+    } catch (error) {
+      console.error('Error processing direct URL:', error);
+      throw error;
+    }
+  }
+
   static async searchProducts(query: string, limit: number = 20): Promise<ProductSearchResult[]> {
     try {
+      // Check if the query is a URL
+      const isUrl = query.startsWith('http://') || query.startsWith('https://');
+      
+      if (isUrl) {
+        console.log('Processing direct URL:', query);
+        const product = await this.getProductByUrl(query);
+        return [product];
+      }
+
+      // If not a URL, proceed with regular search
       console.log('Searching products with query:', query);
       const searchUrl = `${this.baseUrl}/products/search?q=${encodeURIComponent(query)}&limit=${limit}&publisher_id=${SKIMLINKS_CONFIG.publisherId}`;
       console.log('Search URL:', searchUrl);
@@ -103,7 +136,7 @@ export class SkimlinksService {
       }
       
       // Transform the response into our ProductSearchResult format
-      return data.products.map(async (product: any) => {
+      return Promise.all(data.products.map(async (product: any) => {
         try {
           const affiliateUrl = await this.generateAffiliateLink(product.url);
           return {
@@ -121,7 +154,7 @@ export class SkimlinksService {
           console.error('Error processing product:', error);
           throw error;
         }
-      });
+      }));
     } catch (error) {
       console.error('Error searching products:', error);
       throw error;
