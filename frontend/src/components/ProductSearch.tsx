@@ -31,12 +31,12 @@ const ProductSearch: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    const searchUrl = `${axios.defaults.baseURL}/api/skimlinks/search?query=${encodeURIComponent(query.trim())}`;
+    const searchUrl = `/skimlinks/search?query=${encodeURIComponent(query.trim())}`;
     console.log('Sending request to:', searchUrl);
 
     try {
       console.log('Starting search with query:', query);
-      const response = await axios.get(`/api/skimlinks/search?query=${encodeURIComponent(query.trim())}`);
+      const response = await axios.get(searchUrl);
       console.log('Search response:', response.data);
       
       setProducts(response.data.products || []);

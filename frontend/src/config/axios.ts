@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // Set the base URL for all axios requests
 const apiUrl = process.env.NODE_ENV === 'production' 
-  ? 'https://threadtwin-backend.vercel.app'  // Production backend URL
-  : 'http://localhost:3001';                 // Local development URL
+  ? 'https://threadtwin.com/api'  // Production API URL on same domain
+  : 'http://localhost:3001';      // Local development URL
 
 console.log('Configuring axios with base URL:', apiUrl);
 axios.defaults.baseURL = apiUrl;
