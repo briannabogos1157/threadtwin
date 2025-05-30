@@ -3,6 +3,28 @@ import { SkimlinksService } from '../services/skimlinks.service';
 
 const router = express.Router();
 
+// Test endpoint that returns a sample product
+router.get('/test', async (_req, res) => {
+  try {
+    const sampleProduct = {
+      id: 'skims-cotton-rib-tank',
+      title: 'SKIMS Cotton Rib Long Tank - Harbor',
+      description: 'The selfie-worthy cotton tank you know and love, now with a longer length that hits at the top part of the hip. Features a ribbed finish plus the perfect amount of stretch and breathability for major comfort. Fits true to size.',
+      price: 38.00,
+      currency: 'USD',
+      merchant: 'SKIMS',
+      imageUrl: 'https://cdn.shopify.com/s/files/1/0259/5448/4284/products/SKIMS-COTTON-RIB-LONG-TANK-HARBOR-01-ECOM.jpg',
+      productUrl: 'https://skims.com/products/cotton-rib-long-tank-harbor',
+      affiliateUrl: 'https://skims.com/products/cotton-rib-long-tank-harbor'  // This will be replaced with actual affiliate link in production
+    };
+
+    res.json({ products: [sampleProduct] });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: 'Test endpoint failed' });
+  }
+});
+
 router.get('/search', async (req, res) => {
   try {
     console.log('Received search request:', req.query);

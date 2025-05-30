@@ -24,6 +24,23 @@ const ProductSearch: React.FC = () => {
     console.log('Current API URL:', axios.defaults.baseURL);
   }, []);
 
+  const handleTestProduct = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      console.log('Fetching test product...');
+      const response = await axios.get('/api/skimlinks/test');
+      console.log('Test response:', response.data);
+      setProducts(response.data.products || []);
+    } catch (err: any) {
+      console.error('Test error:', err);
+      setError('Failed to fetch test product. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
@@ -86,8 +103,17 @@ const ProductSearch: React.FC = () => {
               {loading ? 'Processing...' : isUrl(query) ? 'Get Affiliate Link' : 'Search'}
             </button>
           </div>
-          <div className="text-sm text-gray-500">
-            You can either paste a product URL or enter search terms (e.g., "cotton t-shirt")
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              You can either paste a product URL or enter search terms (e.g., "cotton t-shirt")
+            </div>
+            <button
+              type="button"
+              onClick={handleTestProduct}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Try Sample Product
+            </button>
           </div>
         </div>
       </form>
