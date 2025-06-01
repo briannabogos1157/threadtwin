@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Product } from '../types/Product';
+import { Product } from '../types/product';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;

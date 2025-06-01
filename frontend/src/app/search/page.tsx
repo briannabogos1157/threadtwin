@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 
@@ -16,13 +16,14 @@ interface Product {
   affiliateUrl: string;
 }
 
-export default function Search() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!searchParams) return;
     const query = searchParams.get('q');
     if (!query) return;
 
@@ -142,5 +143,30 @@ export default function Search() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function Search() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-white">
+        <nav className="border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              <h1 className="text-xl font-semibold">ThreadTwin</h1>
+              <div className="flex gap-6">
+                <a href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</a>
+                <a href="/about" className="text-sm text-gray-600 hover:text-gray-900">About</a>
+              </div>
+            </div>
+          </div>
+        </nav>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
+        </div>
+      </main>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 } 

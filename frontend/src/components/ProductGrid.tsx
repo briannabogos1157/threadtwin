@@ -1,5 +1,5 @@
 import React from 'react';
-import { Product } from '../types/Product';
+import { Product } from '../types/product';
 import { ProductCard } from './ProductCard';
 
 interface ProductGridProps {
