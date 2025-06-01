@@ -1,44 +1,70 @@
 'use client';
 
+import React, { useState } from 'react';
+import Image from 'next/image';
+import { Product } from '../types/Product';
+
 interface ProductCardProps {
-  matchPercentage: number;
-  matchQuality: string;
-  price: number;
-  imageUrl?: string;
+  product: Product;
 }
 
-export default function ProductCard({ matchPercentage, matchQuality, price, imageUrl }: ProductCardProps) {
+export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const [imageError, setImageError] = useState(false);
+
   return (
-    <div className="group bg-white rounded-2xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl">
-      <div className="aspect-square bg-gray-50 relative overflow-hidden">
-        {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt="Product" 
-            className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110" 
+    <div className="group relative overflow-hidden rounded-lg bg-white shadow-md transition-all hover:shadow-lg">
+      {/* Image container with aspect ratio */}
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-gray-100">
+        {!imageError ? (
+          <Image
+            src={product.image_url}
+            alt={product.title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gradient-to-br from-gray-50 to-gray-100">
-            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+          <div className="flex h-full w-full items-center justify-center bg-gray-100 p-4">
+            <span className="text-center text-sm text-gray-500">
+              {product.brand} - {product.title}
+            </span>
           </div>
         )}
-        <div className="absolute top-4 right-4 bg-black bg-opacity-90 text-white px-4 py-2 rounded-full">
-          <span className="font-bold">{matchPercentage}%</span>
-        </div>
       </div>
-      <div className="p-6 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-lg font-semibold text-gray-900">{matchQuality}</div>
-            <div className="text-2xl font-bold mt-1">${price}</div>
+
+      {/* Product details */}
+      <div className="p-4">
+        <h3 className="mb-1 text-lg font-semibold text-gray-800 line-clamp-1">
+          {product.title}
+        </h3>
+        
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm text-gray-600">
+            {product.brand || 'Brand'}
+          </span>
+          <div className="flex items-center gap-2">
+            {product.retail_price && product.retail_price > product.price && (
+              <span className="text-sm text-gray-400 line-through">
+                ${product.retail_price.toFixed(2)}
+              </span>
+            )}
+            <span className="font-medium text-primary">
+              ${product.price.toFixed(2)}
+            </span>
           </div>
-          <button className="bg-black text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors">
-            View Details
-          </button>
         </div>
+
+        {/* Shop button */}
+        <a
+          href={product.affiliate_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 block w-full rounded-md bg-primary px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-primary-dark"
+        >
+          Shop Now
+        </a>
       </div>
     </div>
   );
-} 
+}; 

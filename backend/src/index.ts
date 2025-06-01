@@ -5,7 +5,7 @@ import NodeCache from 'node-cache';
 import rateLimit from 'express-rate-limit';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
-import skimlinksRoutes from './routes/skimlinks.routes';
+import productRoutes from './routes/product.routes';
 
 dotenv.config();
 
@@ -15,7 +15,7 @@ const app = express();
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
     ? ['https://threadtwin.vercel.app']
-    : '*',
+    : ['http://localhost:3000', 'http://localhost:3002'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
@@ -110,7 +110,7 @@ app.get('/', (_req: Request, res: Response) => {
       health: '/api/health',
       analyze: '/api/analyze',
       compare: '/api/compare',
-      skimlinks: '/api/skimlinks/search'
+      products: '/api/products'
     }
   });
 });
@@ -130,6 +130,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // Routes
 app.post('/api/analyze', async (req: Request, res: Response) => {
+  let timeoutId: NodeJS.Timeout | null = null;
+  
   try {
     console.log('Received analyze request:', req.body);
     const { url } = req.body;
@@ -152,29 +154,38 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
     console.log('Analyzing product:', url);
     
     // Set timeout for the entire operation
-    const timeout = setTimeout(() => {
-      return res.status(504).json({ error: 'Request timeout' });
+    timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(504).json({ error: 'Request timeout' });
+      }
     }, 30000); // 30 second timeout
 
-    try {
-      const productDetails = await scraper.scrapeProduct(url);
-      clearTimeout(timeout);
-      
-      if (!productDetails.name) {
-        return res.status(404).json({ error: 'Could not find product details' });
-      }
-      
-      // Store in cache
-      cache.set(url, productDetails);
-      console.log('Product analysis complete:', productDetails.name);
-      
-      return res.json(productDetails);
-    } catch (error) {
-      clearTimeout(timeout);
-      return res.status(500).json({ error: 'Internal server error' });
+    const productDetails = await scraper.scrapeProduct(url);
+    
+    if (timeoutId) {
+      clearTimeout(timeoutId);
     }
+    
+    if (!productDetails.name || productDetails.name === 'Access Denied') {
+      return res.status(404).json({ error: 'Could not access product details. The website may be blocking our request.' });
+    }
+    
+    // Store in cache
+    cache.set(url, productDetails);
+    console.log('Product analysis complete:', productDetails.name);
+    
+    return res.json(productDetails);
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    
+    console.error('Error analyzing product:', error);
+    
+    return res.status(500).json({ 
+      error: 'Failed to analyze product',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -246,7 +257,7 @@ app.post('/api/compare', async (req: Request, res: Response) => {
 });
 
 // Register routes
-app.use('/api/skimlinks', skimlinksRoutes);
+app.use('/api/products', productRoutes);
 
 const PORT = process.env.PORT || 3001;
 

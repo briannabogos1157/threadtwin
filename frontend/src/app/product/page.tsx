@@ -2,33 +2,66 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ThreadTwinAPI } from '@/services/api';
-import MatchBadge from '@/components/MatchBadge';
+import axios from 'axios';
+import '../../config/axios';
 
-interface DupeResult {
+interface ProductDetails {
   name: string;
   price: number;
-  match: number;
-  image?: string;
+  description: string;
+  imageUrl: string;
+  url: string;
+  fabric?: string;
+}
+
+interface MatchBreakdown {
+  fabric: number;
+  construction: number;
+  fit: number;
+  care: number;
+  total: number;
+}
+
+interface ComparisonResult {
+  original: ProductDetails;
+  dupe: ProductDetails;
+  matchBreakdown: MatchBreakdown;
 }
 
 export default function Product() {
-  const [originalProduct, setOriginalProduct] = useState<any>(null);
+  const [originalProduct, setOriginalProduct] = useState<ProductDetails | null>(null);
   const [dupeUrl, setDupeUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [comparisonResult, setComparisonResult] = useState<any>(null);
+  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
 
   useEffect(() => {
-    // Load the original product from localStorage
-    const savedProduct = localStorage.getItem('originalProduct');
-    if (savedProduct) {
-      setOriginalProduct(JSON.parse(savedProduct));
-    }
+    const loadProduct = async () => {
+      const savedProduct = localStorage.getItem('originalProduct');
+      if (!savedProduct) return;
+
+      const { url } = JSON.parse(savedProduct);
+      if (!url) return;
+
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const response = await axios.post('/api/analyze', { url });
+        setOriginalProduct({ ...response.data, url });
+      } catch (err: any) {
+        console.error('Error loading product:', err);
+        setError(err.response?.data?.error || 'Failed to load product details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProduct();
   }, []);
 
   const handleCompare = async () => {
-    if (!dupeUrl) {
+    if (!dupeUrl || !originalProduct?.url) {
       setError('Please enter a dupe product URL');
       return;
     }
@@ -37,148 +70,149 @@ export default function Product() {
     setError('');
 
     try {
-      const result = await ThreadTwinAPI.compareProducts(originalProduct.url, dupeUrl);
-      setComparisonResult(result);
-    } catch (err) {
-      let errorMessage = 'Failed to compare products. Please try again.';
-      if (err instanceof Error) {
-        if (err.message.includes('Invalid URL')) {
-          errorMessage = 'Please enter a valid product URL.';
-        } else if (err.message.includes('Could not find product details')) {
-          errorMessage = 'Could not find product details. Please check if the URL is correct.';
-        } else if (err.message.includes('timeout')) {
-          errorMessage = 'Request timed out. Please try again.';
-        }
-      }
-      setError(errorMessage);
+      const response = await axios.post('/api/compare', {
+        originalUrl: originalProduct.url,
+        dupeUrl
+      });
+      setComparisonResult(response.data);
+    } catch (err: any) {
+      console.error('Comparison error:', err);
+      setError(err.response?.data?.error || 'Failed to compare products');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!originalProduct) {
+  if (isLoading) {
     return (
-      <main className="p-6 max-w-6xl mx-auto">
-        <p>No product selected. Please return to the <Link href="/" className="text-primary hover:underline">home page</Link>.</p>
+      <main className="min-h-screen bg-white p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!originalProduct && !isLoading) {
+    return (
+      <main className="min-h-screen bg-white p-6">
+        <p>No product selected. Please return to the <Link href="/" className="text-blue-500 hover:underline">home page</Link>.</p>
       </main>
     );
   }
 
   return (
-    <main className="p-6 max-w-6xl mx-auto">
-      <header className="flex justify-between items-center border-b pb-4 mb-6">
-        <h1 className="text-2xl font-bold">{originalProduct.name || 'Product Analysis'}</h1>
-        <nav className="space-x-4">
-          <Link href="/" className="hover:underline">Home</Link>
-          <Link href="/about" className="hover:underline">About</Link>
-        </nav>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="border rounded-lg p-4">
-          {originalProduct.images?.[0] ? (
-            <img 
-              src={originalProduct.images[0]} 
-              alt={originalProduct.name}
-              className="w-full h-40 object-cover rounded-lg mb-4"
-            />
-          ) : (
-            <div className="w-full h-40 bg-gray-200 rounded-lg mb-4"></div>
-          )}
-          <div className="space-y-2">
-            <p className="font-semibold">{originalProduct.name}</p>
-            <p className="text-gray-600">
-              {originalProduct.fabricComposition.join(', ')}
-            </p>
-            <p className="font-medium">${originalProduct.price}</p>
+    <main className="min-h-screen bg-white">
+      {/* Navigation */}
+      <nav className="border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-semibold">ThreadTwin</h1>
+            <div className="flex items-center gap-6">
+              <a href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</a>
+              <a href="/about" className="text-sm text-gray-600 hover:text-gray-900">About</a>
+              <input
+                type="text"
+                placeholder="Search"
+                className="px-4 py-1 text-sm border border-gray-200 rounded-lg"
+              />
+              <button className="p-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+      </nav>
 
-        <div className="md:col-span-2 space-y-4">
-          <div className="border rounded-lg p-4">
-            <p className="font-medium mb-2">Fabric Composition</p>
-            <p>{originalProduct.fabricComposition.join(', ')}</p>
-            
-            <div className="mt-4 space-y-2">
-              <p className="font-medium">Construction</p>
-              <p>{originalProduct.construction.join(', ') || 'Not specified'}</p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <p className="font-medium">Fit</p>
-              <p>{originalProduct.fit.join(', ') || 'Not specified'}</p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <p className="font-medium">Care Instructions</p>
-              <p>{originalProduct.careInstructions.join(', ') || 'Not specified'}</p>
-            </div>
-          </div>
-
-          <div className="border rounded-lg p-4">
-            <h3 className="font-semibold mb-4">Compare with a Dupe</h3>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  value={dupeUrl}
-                  onChange={(e) => setDupeUrl(e.target.value)}
-                  placeholder="Paste dupe product URL"
-                  className="flex-1 border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+      {/* Product Details */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-12 gap-8">
+          {/* Original Product */}
+          <div className="col-span-3">
+            <h2 className="text-xl font-medium mb-6">Original Product</h2>
+            <div className="aspect-w-1 aspect-h-1 bg-gray-100 rounded-lg mb-4">
+              {originalProduct?.imageUrl ? (
+                <img
+                  src={originalProduct.imageUrl}
+                  alt={originalProduct.name}
+                  className="object-cover w-full h-full rounded-lg"
                 />
-                <button
-                  onClick={handleCompare}
-                  disabled={isLoading}
-                  className={`btn-primary ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isLoading ? 'Comparing...' : 'Compare'}
-                </button>
-              </div>
-              
-              {error && (
-                <p className="text-red-500 text-sm">{error}</p>
-              )}
-
-              {comparisonResult && (
-                <div className="mt-4">
-                  <h4 className="font-medium mb-2">Comparison Results</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center border rounded-lg p-2">
-                      <p className="text-sm font-medium">Fabric Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.fabric} label="Fabric" weight={0.4} />
-                    </div>
-                    <div className="text-center border rounded-lg p-2">
-                      <p className="text-sm font-medium">Fit Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.fit} label="Fit" weight={0.25} />
-                    </div>
-                    <div className="text-center border rounded-lg p-2">
-                      <p className="text-sm font-medium">Construction Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.construction} label="Construction" weight={0.25} />
-                    </div>
-                    <div className="text-center border rounded-lg p-2">
-                      <p className="text-sm font-medium">Care Match</p>
-                      <MatchBadge score={comparisonResult.matchBreakdown.care} label="Care" weight={0.1} />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-lg font-semibold">{comparisonResult.dupe.name}</p>
-                        <p className="text-sm text-gray-600">${comparisonResult.dupe.price}</p>
-                      </div>
-                      <MatchBadge 
-                        score={comparisonResult.matchBreakdown.total}
-                        label="Overall Match"
-                        weight={1.0}
-                        showTooltip={true}
-                        breakdown={comparisonResult.matchBreakdown}
-                      />
-                    </div>
-                  </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M7 5C5.89543 5 5 5.89543 5 7V17C5 18.1046 5.89543 19 7 19H17C18.1046 19 19 18.1046 19 17V7C19 5.89543 18.1046 5 17 5H7Z" />
+                  </svg>
                 </div>
               )}
             </div>
+            <h3 className="text-lg font-medium">{originalProduct?.name}</h3>
+            <p className="text-sm text-gray-500 mt-2">
+              {originalProduct?.fabric || '50% Material, 50% Material'}
+            </p>
+            <p className="text-sm font-medium mt-4">${originalProduct?.price || 0}</p>
+          </div>
+
+          {/* Dupe Search */}
+          <div className="col-span-9">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-medium">Find a Dupe</h2>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-gray-500">Fabric</span>
+                <span className="text-sm text-gray-500">50% Material, 50% Material</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mb-8">
+              <input
+                type="text"
+                value={dupeUrl}
+                onChange={(e) => setDupeUrl(e.target.value)}
+                placeholder="Paste dupe product URL"
+                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <button
+                onClick={handleCompare}
+                disabled={isLoading}
+                className="px-6 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              >
+                Compare
+              </button>
+            </div>
+
+            {error && (
+              <div className="text-sm text-red-600 mb-6">{error}</div>
+            )}
+
+            {comparisonResult && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-4">
+                      <div className="aspect-w-1 aspect-h-1 bg-gray-100 rounded-lg mb-4">
+                        <img
+                          src={comparisonResult.dupe.imageUrl}
+                          alt={comparisonResult.dupe.name}
+                          className="object-cover w-full h-full rounded-lg"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-medium">{comparisonResult.matchBreakdown.total}% match</div>
+                          <div className="text-xs text-gray-500">
+                            {comparisonResult.matchBreakdown.total >= 90 ? 'Excellent match' :
+                             comparisonResult.matchBreakdown.total >= 80 ? 'Very similar' :
+                             comparisonResult.matchBreakdown.total >= 70 ? 'Good dupe' : 'Fair dupe'}
+                          </div>
+                        </div>
+                        <div className="text-sm font-medium">${comparisonResult.dupe.price}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
