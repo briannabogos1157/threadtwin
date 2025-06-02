@@ -13,6 +13,9 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3002;
 
+// Enable trust proxy - required for rate limiting behind reverse proxies like Vercel
+app.set('trust proxy', 1);
+
 // Configure CORS
 const corsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
