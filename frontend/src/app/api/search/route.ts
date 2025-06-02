@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       ? 'https://www.threadtwin.com'  // Use www version to avoid redirects
       : 'http://localhost:3002';
 
-    const requestUrl = `${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`;
+    const requestUrl = `${backendUrl}/api/dupes/search?query=${encodeURIComponent(query)}`;
     console.log('[API Debug] Request details:', {
       url: requestUrl,
       query: query,
