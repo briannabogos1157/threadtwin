@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "vercel-build": "echo 'Letting Vercel handle the build'",
+    "build": "tsc && prisma generate",
+    "vercel-build": "prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,6 +14,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@prisma/client": "^5.9.1",
     "@supabase/supabase-js": "^2.49.9",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
@@ -30,6 +31,7 @@
     "openai": "^5.0.2",
     "pg": "^8.16.0",
     "pg-hstore": "^2.3.4",
+    "prisma": "^5.9.1",
     "puppeteer": "^24.9.0",
     "sequelize": "^6.37.7",
     "typescript": "^5.3.3"

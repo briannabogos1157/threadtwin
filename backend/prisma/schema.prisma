@@ -3,44 +3,22 @@
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = []
-  engineType = "binary"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Product {
-  id            String         @id @default(cuid())
-  url           String         @unique
-  name          String
-  price         String
-  image         String
-  fabric        String        // Stored as JSON string
-  fit           String        // Stored as JSON string
-  care          String        // Stored as JSON string
-  construction  String        // Stored as JSON string
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  originalMatches ProductMatch[] @relation("OriginalProduct")
-  dupeMatches    ProductMatch[] @relation("DupeProduct")
-}
-
-model ProductMatch {
-  id               String   @id @default(cuid())
-  originalProduct  Product  @relation("OriginalProduct", fields: [originalProductId], references: [id])
-  originalProductId String
-  dupeProduct      Product  @relation("DupeProduct", fields: [dupeProductId], references: [id])
-  dupeProductId    String
-  fabricScore      Float
-  fitScore         Float
-  careScore        Float
-  constructionScore Float
-  totalScore       Float
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@unique([originalProductId, dupeProductId])
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  price       Float
+  currency    String   @default("USD")
+  merchant    String
+  imageUrl    String?
+  productUrl  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 } 
