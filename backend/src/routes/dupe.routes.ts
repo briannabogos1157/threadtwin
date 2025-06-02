@@ -145,6 +145,13 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Check if SERPAPI_KEY is available
+    if (!process.env.SERPAPI_KEY) {
+      console.error('SERPAPI_KEY not found in environment variables');
+      res.status(401).json({ error: 'API key not configured', products: [] });
+      return;
+    }
+
     const searchResults = await productSearchService.search_dupes_via_serpapi(query);
     
     // Transform the results to match the frontend's expected format
@@ -163,7 +170,12 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
     res.json({ products });
   } catch (error: any) {
     console.error('Error searching products:', error);
-    res.status(500).json({ error: error.message || 'Failed to search products' });
+    // Check if the error is related to missing API key
+    if (error.message?.includes('SERPAPI_KEY not found')) {
+      res.status(401).json({ error: 'API key not configured', products: [] });
+    } else {
+      res.status(500).json({ error: error.message || 'Failed to search products', products: [] });
+    }
   }
 });
 
