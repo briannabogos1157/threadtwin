@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('query');
 
     if (!query) {
+      console.log('[API Debug] No query parameter provided');
       return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 });
     }
 
@@ -16,9 +17,19 @@ export async function GET(request: NextRequest) {
       ? 'https://threadtwin.com'  // Use non-www version consistently
       : 'http://localhost:3002';
 
-    console.log(`[API Debug] Making request to: ${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`);
+    const requestUrl = `${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`;
+    console.log('[API Debug] Request details:', {
+      url: requestUrl,
+      query: query,
+      isProduction: isProduction,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Origin': isProduction ? 'https://threadtwin.com' : 'http://localhost:3000'
+      }
+    });
 
-    const response = await axios.get(`${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`, {
+    const response = await axios.get(requestUrl, {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -28,10 +39,11 @@ export async function GET(request: NextRequest) {
       validateStatus: (status) => status < 400 // Accept any success status
     });
 
-    console.log('[API Debug] Response received:', {
+    console.log('[API Debug] Backend response:', {
       status: response.status,
-      data: response.data,
-      headers: response.headers
+      statusText: response.statusText,
+      headers: response.headers,
+      data: JSON.stringify(response.data, null, 2)
     });
 
     // Set CORS headers in the response
@@ -44,7 +56,9 @@ export async function GET(request: NextRequest) {
 
     // Check if we have products in the response
     if (!response.data.products || response.data.products.length === 0) {
-      console.log('[API Debug] No products found in response');
+      console.log('[API Debug] No products found in response. Full response:', response.data);
+    } else {
+      console.log(`[API Debug] Found ${response.data.products.length} products`);
     }
 
     return NextResponse.json(response.data, { headers });
@@ -52,11 +66,15 @@ export async function GET(request: NextRequest) {
     console.error('[API Debug] Search error:', {
       message: error.message,
       status: error.response?.status,
+      statusText: error.response?.statusText,
       data: error.response?.data,
       config: {
         url: error.config?.url,
-        headers: error.config?.headers
-      }
+        method: error.config?.method,
+        headers: error.config?.headers,
+        baseURL: error.config?.baseURL
+      },
+      stack: error.stack
     });
     
     // Return error with CORS headers
