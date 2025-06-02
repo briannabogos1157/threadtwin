@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import NodeCache from 'node-cache';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 import productRoutes from './routes/product.routes';
@@ -15,6 +16,9 @@ const port = process.env.PORT || 3002;
 
 // Enable trust proxy - required for rate limiting behind reverse proxies like Vercel
 app.set('trust proxy', 1);
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Configure CORS
 const corsOptions = {
