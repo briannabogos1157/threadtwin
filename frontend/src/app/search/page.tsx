@@ -32,20 +32,7 @@ function SearchContent() {
       setError('');
 
       try {
-        // Use the main domain in production, fallback to localhost for development
-        const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'www.threadtwin.com'
-          ? 'https://threadtwin.com'
-          : 'http://localhost:3002';
-
-        const response = await axios.get(`${baseUrl}/api/dupes/find?query=${encodeURIComponent(query)}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true,
-          // Prevent axios from following redirects
-          maxRedirects: 0
-        });
+        const response = await axios.get(`/api/search?query=${encodeURIComponent(query)}`);
         setProducts(response.data.products || []);
       } catch (err: any) {
         console.error('Search error:', err);
