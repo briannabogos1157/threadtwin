@@ -23,18 +23,18 @@ app.use(express.static(path.join(__dirname, '../public')));
 // Configure CORS
 const corsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'https://www.threadtwin.com',
-      'https://threadtwin.com'
-    ];
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://www.threadtwin.com', 'https://threadtwin.com'] // Production origins
+      : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']; // Development origins
     
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (like mobile apps or curl requests) only in development
+    if (!origin) {
+      return process.env.NODE_ENV === 'development' 
+        ? callback(null, true)
+        : callback(new Error('Origin required'), false);
+    }
     
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
