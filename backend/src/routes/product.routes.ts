@@ -1,5 +1,6 @@
 import express from 'express';
 import { ProductService } from '../services/product.service';
+import productController from '../controllers/product.controller';
 
 const router = express.Router();
 
@@ -43,5 +44,7 @@ router.post('/affiliate', async (req, res) => {
     });
   }
 });
+
+router.post('/import', productController.importProducts);
 
 export default router; 

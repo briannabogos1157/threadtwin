@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { findDupes, analyzeDupePair } from '../services/openai.service';
@@ -13,7 +13,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Submit a new dupe
-router.post('/submit', async (req, res) => {
+router.post('/submit', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       originalProduct,
@@ -24,7 +24,8 @@ router.post('/submit', async (req, res) => {
 
     // Validate required fields
     if (!originalProduct || !dupeProduct || !priceComparison || !similarityReason) {
-      return res.status(400).json({ error: 'All fields are required' });
+      res.status(400).json({ error: 'All fields are required' });
+      return;
     }
 
     // Insert into database
@@ -50,7 +51,7 @@ router.post('/submit', async (req, res) => {
 });
 
 // Get all dupes (with optional status filter)
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status } = req.query;
     let query = supabase.from('dupes').select('*');
@@ -71,13 +72,14 @@ router.get('/', async (req, res) => {
 });
 
 // Update dupe status (for admin use)
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
     if (!['pending', 'approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+      res.status(400).json({ error: 'Invalid status' });
+      return;
     }
 
     const { data, error } = await supabase
@@ -96,19 +98,16 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Find dupes for a product using AI
-router.post('/find', async (req, res) => {
+router.post('/find', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { 
-      originalProduct, 
-      priceRange, 
-      preferredStores 
-    } = req.body;
+    const { originalProduct } = req.body;
 
     if (!originalProduct) {
-      return res.status(400).json({ error: 'Original product is required' });
+      res.status(400).json({ error: 'Original product is required' });
+      return;
     }
 
-    const suggestions = await findDupes(originalProduct, priceRange, preferredStores);
+    const suggestions = await findDupes(originalProduct);
     res.json({ suggestions });
   } catch (error: any) {
     console.error('Error finding dupes:', error);
@@ -117,12 +116,13 @@ router.post('/find', async (req, res) => {
 });
 
 // Get detailed comparison between original and dupe
-router.post('/analyze-pair', async (req, res) => {
+router.post('/analyze-pair', async (req: Request, res: Response): Promise<void> => {
   try {
     const { originalProduct, dupeProduct } = req.body;
 
     if (!originalProduct || !dupeProduct) {
-      return res.status(400).json({ error: 'Both products are required' });
+      res.status(400).json({ error: 'Both products are required' });
+      return;
     }
 
     const analysis = await analyzeDupePair(originalProduct, dupeProduct);

@@ -67,7 +67,12 @@ export async function analyzeDupeSubmission(
       response_format: { type: "json_object" }
     });
 
-    const analysis = JSON.parse(completion.choices[0].message.content);
+    const content = completion.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+
+    const analysis = JSON.parse(content);
     return analysis as DupeAnalysis;
   } catch (error) {
     console.error('Error analyzing dupe submission:', error);
@@ -164,7 +169,12 @@ export async function analyzeDupePair(
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(completion.choices[0].message.content);
+    const content = completion.choices[0].message.content;
+    if (!content) {
+      throw new Error('No content in OpenAI response');
+    }
+
+    return JSON.parse(content);
   } catch (error) {
     console.error('Error analyzing dupe pair:', error);
     throw error;

@@ -10,6 +10,9 @@ export default function Navigation() {
         <Link href="/" className="text-lg">
           Home
         </Link>
+        <Link href="/submit-dupe" className="text-lg text-blue-500 hover:text-blue-600">
+          Submit Dupe
+        </Link>
         <Link href="/about" className="text-lg">
           About
         </Link>

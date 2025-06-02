@@ -6,28 +6,26 @@ import rateLimit from 'express-rate-limit';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 import productRoutes from './routes/product.routes';
+import apiRoutes from './routes/api';
 
 dotenv.config();
 
 const app = express();
+const port = process.env.PORT || 3002;
 
-// CORS configuration
+// Configure CORS
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://threadtwin.vercel.app']
-    : ['http://localhost:3000', 'http://localhost:3002'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['RateLimit-Limit', 'RateLimit-Remaining', 'RateLimit-Reset', 'Retry-After'],
-  credentials: true
+  credentials: true,
 };
 
 console.log('Configuring CORS with options:', corsOptions);
-
-// Apply CORS first
 app.use(cors(corsOptions));
 
-// Then basic middleware
+// Parse JSON bodies
 app.use(express.json());
 
 // Cache configuration
@@ -258,11 +256,10 @@ app.post('/api/compare', async (req: Request, res: Response) => {
 
 // Register routes
 app.use('/api/products', productRoutes);
+app.use('/api', apiRoutes);
 
-const PORT = process.env.PORT || 3001;
-
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
 
 // Graceful shutdown

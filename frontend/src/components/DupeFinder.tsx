@@ -7,7 +7,7 @@ interface DupeSuggestion {
   retailer: string;
   price: string;
   description: string;
-  productLink: string;
+  link: string;
 }
 
 export default function DupeFinder() {
@@ -52,7 +52,7 @@ export default function DupeFinder() {
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Find Fashion Dupes</h2>
         <p className="text-gray-600">
-          Enter a luxury fashion item and let our AI find affordable alternatives.
+          Enter a luxury fashion item and let our AI find affordable alternatives from popular retailers.
         </p>
       </div>
 
@@ -66,7 +66,7 @@ export default function DupeFinder() {
             id="luxuryItem"
             value={luxuryItem}
             onChange={(e) => setLuxuryItem(e.target.value)}
-            placeholder="e.g., Reformation Nikita Dress"
+            placeholder="e.g., Skims Soft Lounge Long Slip Dress"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
           />
@@ -105,7 +105,7 @@ export default function DupeFinder() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Price</p>
-                  <p className="text-gray-900">{suggestion.price}</p>
+                  <p className="text-green-600 font-medium">{suggestion.price}</p>
                 </div>
               </div>
               <div className="mt-4">
@@ -114,12 +114,15 @@ export default function DupeFinder() {
               </div>
               <div className="mt-4">
                 <a
-                  href={suggestion.productLink}
+                  href={suggestion.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 text-sm"
+                  className="inline-flex items-center text-blue-600 hover:text-blue-800"
                 >
-                  View Product →
+                  View Product
+                  <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </a>
               </div>
             </div>
