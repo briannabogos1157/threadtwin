@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Determine the correct backend URL based on the environment
     const isProduction = process.env.NODE_ENV === 'production';
     const backendUrl = isProduction 
-      ? 'https://threadtwin.com'  // Use non-www version consistently
+      ? 'https://www.threadtwin.com'  // Use www version to avoid redirects
       : 'http://localhost:3002';
 
     const requestUrl = `${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Origin': isProduction ? 'https://threadtwin.com' : 'http://localhost:3000'
+        'Origin': isProduction ? 'https://www.threadtwin.com' : 'http://localhost:3000'
       }
     });
 
@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Origin': isProduction ? 'https://threadtwin.com' : 'http://localhost:3000'
+        'Origin': isProduction ? 'https://www.threadtwin.com' : 'http://localhost:3000'
       },
-      maxRedirects: 0, // Prevent redirects
+      maxRedirects: 5, // Allow some redirects just in case
       validateStatus: (status) => status < 400 // Accept any success status
     });
 
