@@ -17,24 +17,14 @@ const port = process.env.PORT || 3002;
 // Enable trust proxy - required for rate limiting behind reverse proxies like Vercel
 app.set('trust proxy', 1);
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Configure CORS
-const corsOptions = {
+// Configure CORS for API routes
+const apiCorsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = process.env.NODE_ENV === 'production' 
       ? ['https://www.threadtwin.com', 'https://threadtwin.com'] // Production origins
       : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']; // Development origins
     
-    // Allow requests with no origin (like mobile apps or curl requests) only in development
-    if (!origin) {
-      return process.env.NODE_ENV === 'development' 
-        ? callback(null, true)
-        : callback(new Error('Origin required'), false);
-    }
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
       console.log('CORS blocked origin:', origin);
@@ -55,17 +45,40 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+// Configure CORS for static files and basic routes
+const basicCorsOptions = {
+  origin: true, // Allow all origins for static files
+  methods: ['GET', 'HEAD', 'OPTIONS'],
+  optionsSuccessStatus: 204
+};
+
 // Log all incoming requests for debugging
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
   next();
 });
 
-console.log('Configuring CORS with options:', corsOptions);
-app.use(cors(corsOptions));
+// Apply basic CORS for static files and root route
+app.use(cors(basicCorsOptions));
 
-// Add OPTIONS handling for preflight requests
-app.options('*', cors(corsOptions));
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Add root route handler with basic CORS
+app.get('/', cors(basicCorsOptions), (_req: Request, res: Response) => {
+  res.json({ 
+    status: 'API is running',
+    endpoints: {
+      health: '/api/health',
+      analyze: '/api/analyze',
+      compare: '/api/compare',
+      products: '/api/products'
+    }
+  });
+});
+
+// Apply stricter CORS for API routes
+app.use('/api', cors(apiCorsOptions));
 
 // Parse JSON bodies
 app.use(express.json());
@@ -135,19 +148,6 @@ const validateUrl = (url: string): boolean => {
     return false;
   }
 };
-
-// Add root route handler
-app.get('/', (_req: Request, res: Response) => {
-  res.json({ 
-    status: 'API is running',
-    endpoints: {
-      health: '/api/health',
-      analyze: '/api/analyze',
-      compare: '/api/compare',
-      products: '/api/products'
-    }
-  });
-});
 
 // Health check endpoint with detailed status
 app.get('/api/health', (_req: Request, res: Response) => {
