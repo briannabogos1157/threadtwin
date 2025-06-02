@@ -32,7 +32,10 @@ function SearchContent() {
       setError('');
 
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/dupes/find?query=${encodeURIComponent(query)}`);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
+        // Remove any trailing slashes
+        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+        const response = await axios.get(`${cleanBaseUrl}/api/dupes/find?query=${encodeURIComponent(query)}`);
         setProducts(response.data.products || []);
       } catch (err: any) {
         console.error('Search error:', err);

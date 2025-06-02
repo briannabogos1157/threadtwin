@@ -11,15 +11,33 @@
   "routes": [
     {
       "src": "/api/dupes/(.*)",
-      "dest": "src/index.ts"
+      "dest": "src/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://www.threadtwin.com",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/api/products/(.*)",
-      "dest": "src/index.ts"
+      "dest": "src/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://www.threadtwin.com",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "src/index.ts"
+      "dest": "src/index.ts",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://www.threadtwin.com",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Credentials": "true"
+      }
     }
   ],
   "env": {
