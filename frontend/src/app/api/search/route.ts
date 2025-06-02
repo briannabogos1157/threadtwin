@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Determine the correct backend URL based on the environment
     const isProduction = process.env.NODE_ENV === 'production';
     const backendUrl = isProduction 
-      ? 'https://www.threadtwin.com'  // Use www version to avoid redirects
+      ? 'https://api.threadtwin.com'  // Use dedicated API subdomain
       : 'http://localhost:3002';
 
     const requestUrl = `${backendUrl}/api/dupes/search?query=${encodeURIComponent(query)}`;
