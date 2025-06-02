@@ -1,15 +1,5 @@
-import { Sequelize } from 'sequelize';
-import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
 
-// Load environment variables from .env file
-dotenv.config();
+const prisma = new PrismaClient();
 
-export const sequelize = new Sequelize({
-  dialect: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'threadtwin',
-  logging: false
-}); 
+export default prisma; 

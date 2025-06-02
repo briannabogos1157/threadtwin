@@ -29,11 +29,9 @@
     "express-rate-limit": "^7.1.5",
     "node-cache": "^5.1.2",
     "openai": "^5.0.2",
-    "pg": "^8.16.0",
-    "pg-hstore": "^2.3.4",
+    "pg": "^8.11.3",
     "prisma": "^5.9.1",
     "puppeteer": "^24.9.0",
-    "sequelize": "^6.37.7",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
