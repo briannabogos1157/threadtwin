@@ -21,7 +21,11 @@ app.set('trust proxy', 1);
 const apiCorsOptions = {
   origin: function(origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     const allowedOrigins = process.env.NODE_ENV === 'production' 
-      ? ['https://www.threadtwin.com', 'https://threadtwin.com'] // Production origins
+      ? [
+          'https://www.threadtwin.com',
+          'https://threadtwin.com',
+          'https://threadtwin-backend-f12a4jgla-briannas-projects-510aeadc.vercel.app'
+        ] // Production origins
       : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']; // Development origins
     
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {

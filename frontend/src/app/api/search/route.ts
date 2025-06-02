@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Determine the correct backend URL based on the environment
     const isProduction = process.env.NODE_ENV === 'production';
     const backendUrl = isProduction 
-      ? 'https://api.threadtwin.com'  // Use dedicated API subdomain
+      ? 'https://threadtwin-backend-f12a4jgla-briannas-projects-510aeadc.vercel.app'  // Use Vercel deployment URL
       : 'http://localhost:3002';
 
     const requestUrl = `${backendUrl}/api/dupes/search?query=${encodeURIComponent(query)}`;
