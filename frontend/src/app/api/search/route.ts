@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
       ? 'https://threadtwin.com'  // Use non-www version consistently
       : 'http://localhost:3002';
 
+    console.log(`[API Debug] Making request to: ${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`);
+
     const response = await axios.get(`${backendUrl}/api/dupes/find?query=${encodeURIComponent(query)}`, {
       headers: {
         'Accept': 'application/json',
@@ -26,6 +28,12 @@ export async function GET(request: NextRequest) {
       validateStatus: (status) => status < 400 // Accept any success status
     });
 
+    console.log('[API Debug] Response received:', {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
+
     // Set CORS headers in the response
     const headers = {
       'Access-Control-Allow-Origin': isProduction ? 'https://www.threadtwin.com' : 'http://localhost:3000',
@@ -34,9 +42,22 @@ export async function GET(request: NextRequest) {
       'Access-Control-Allow-Credentials': 'true'
     };
 
+    // Check if we have products in the response
+    if (!response.data.products || response.data.products.length === 0) {
+      console.log('[API Debug] No products found in response');
+    }
+
     return NextResponse.json(response.data, { headers });
   } catch (error: any) {
-    console.error('Search error:', error);
+    console.error('[API Debug] Search error:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        headers: error.config?.headers
+      }
+    });
     
     // Return error with CORS headers
     const headers = {
