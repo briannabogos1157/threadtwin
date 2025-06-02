@@ -32,9 +32,9 @@ function SearchContent() {
       setError('');
 
       try {
-        // Use https://api.threadtwin.com in production, fallback to localhost for development
+        // Use the main domain in production, fallback to localhost for development
         const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'www.threadtwin.com'
-          ? 'https://api.threadtwin.com'
+          ? 'https://threadtwin.com'
           : 'http://localhost:3002';
 
         const response = await axios.get(`${baseUrl}/api/dupes/find?query=${encodeURIComponent(query)}`, {
@@ -42,7 +42,9 @@ function SearchContent() {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           },
-          withCredentials: true
+          withCredentials: true,
+          // Prevent axios from following redirects
+          maxRedirects: 0
         });
         setProducts(response.data.products || []);
       } catch (err: any) {

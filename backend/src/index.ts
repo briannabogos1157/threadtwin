@@ -21,8 +21,7 @@ const corsOptions = {
       'http://localhost:3001',
       'http://localhost:3002',
       'https://www.threadtwin.com',
-      'https://threadtwin.com',
-      'https://api.threadtwin.com'
+      'https://threadtwin.com'
     ];
     
     // Allow requests with no origin (like mobile apps or curl requests)
@@ -31,6 +30,7 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -47,6 +47,12 @@ const corsOptions = {
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
+
+// Log all incoming requests for debugging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
 
 console.log('Configuring CORS with options:', corsOptions);
 app.use(cors(corsOptions));
@@ -81,12 +87,6 @@ const limiter = rateLimit({
 
 // Apply rate limiter after other middleware
 app.use(limiter);
-
-// Request logging middleware
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
-  next();
-});
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
