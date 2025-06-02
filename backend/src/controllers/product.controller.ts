@@ -1,29 +1,22 @@
 import { Request, Response } from 'express';
-import productImportService from '../services/productImport.service';
+import { ProductService } from '../services/product.service';
 
-export class ProductController {
+class ProductController {
   async importProducts(req: Request, res: Response) {
     try {
-      const productsData = req.body;
+      const products = req.body;
       
-      if (!Array.isArray(productsData)) {
-        return res.status(400).json({
-          success: false,
-          error: 'Request body must be an array of products'
-        });
+      if (!Array.isArray(products)) {
+        return res.status(400).json({ error: 'Products must be an array' });
       }
 
-      const results = await productImportService.importBulkProducts(productsData);
-      
-      return res.status(200).json({
-        success: true,
-        results
-      });
+      const result = await ProductService.importProducts(products);
+      return res.json(result);
     } catch (error) {
-      console.error('Error in importProducts controller:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal server error'
+      console.error('Error importing products:', error);
+      return res.status(500).json({ 
+        error: 'Failed to import products',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   }

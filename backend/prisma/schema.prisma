@@ -11,14 +11,62 @@ datasource db {
 }
 
 model Product {
+  id                 String   @id @default(uuid())
+  title             String
+  description       String?
+  price            Float
+  currency         String   @default("USD")
+  merchant         String
+  imageUrl         String?
+  productUrl       String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  colors           Color[]
+  badges           Badge[]
+  prices           Price[]
+}
+
+model Color {
   id          String   @id @default(uuid())
-  title       String
-  description String?
-  price       Float
-  currency    String   @default("USD")
-  merchant    String
-  imageUrl    String?
-  productUrl  String
+  productId   String
+  colorCode   String
+  colorName   String
+  imageUrl    String
+  imageType   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  productId   String
+  text        String
+  type        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model Price {
+  id             String   @id @default(uuid())
+  productId      String
+  type           String
+  minPrice       Float
+  maxPrice       Float
+  startValidDate DateTime
+  endValidDate   DateTime
+  minPercentOff  Int
+  maxPercentOff  Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  product        Product  @relation(fields: [productId], references: [id])
 } 
