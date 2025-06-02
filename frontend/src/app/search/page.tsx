@@ -32,10 +32,18 @@ function SearchContent() {
       setError('');
 
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002';
-        // Remove any trailing slashes
-        const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-        const response = await axios.get(`${cleanBaseUrl}/api/dupes/find?query=${encodeURIComponent(query)}`);
+        // Use https://api.threadtwin.com in production, fallback to localhost for development
+        const baseUrl = typeof window !== 'undefined' && window.location.hostname === 'www.threadtwin.com'
+          ? 'https://api.threadtwin.com'
+          : 'http://localhost:3002';
+
+        const response = await axios.get(`${baseUrl}/api/dupes/find?query=${encodeURIComponent(query)}`, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        });
         setProducts(response.data.products || []);
       } catch (err: any) {
         console.error('Search error:', err);
