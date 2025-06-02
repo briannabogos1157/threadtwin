@@ -100,7 +100,7 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
 });
 
 // Find dupes for a product using AI
-router.post('/find', async (req: Request, res: Response): Promise<void> => {
+router.post('/find-dupes', async (req: Request, res: Response): Promise<void> => {
   try {
     const { originalProduct } = req.body;
 
@@ -136,7 +136,7 @@ router.post('/analyze-pair', async (req: Request, res: Response): Promise<void> 
 });
 
 // Search for products
-router.get('/find', async (req: Request, res: Response): Promise<void> => {
+router.get('/search', async (req: Request, res: Response): Promise<void> => {
   try {
     const query = req.query.query as string;
     
