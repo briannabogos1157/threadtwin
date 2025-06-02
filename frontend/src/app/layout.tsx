@@ -21,15 +21,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <head>
-        <meta name="impact-site-verification" content="892529f6-40dc-4338-bd75-9ca9e27a8168" />
-        <Script
-          src="https://s.skimresources.com/js/285945X1772465.skimlinks.js"
-          strategy="afterInteractive"
-        />
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ThreadTwin - Find Fashion Dupes</title>
       </head>
-      <body className={`${inter.className} min-h-full`}>
-        {children}
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 } 

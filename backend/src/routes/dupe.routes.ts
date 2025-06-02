@@ -2,10 +2,12 @@ import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { findDupes, analyzeDupePair } from '../services/openai.service';
+import { ProductSearchService } from '../services/serp.service';
 
 dotenv.config();
 
 const router = express.Router();
+const productSearchService = new ProductSearchService();
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -130,6 +132,38 @@ router.post('/analyze-pair', async (req: Request, res: Response): Promise<void> 
   } catch (error: any) {
     console.error('Error analyzing dupe pair:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Search for products
+router.get('/find', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const query = req.query.query as string;
+    
+    if (!query) {
+      res.status(400).json({ error: 'Search query is required' });
+      return;
+    }
+
+    const searchResults = await productSearchService.search_dupes_via_serpapi(query);
+    
+    // Transform the results to match the frontend's expected format
+    const products = searchResults.map((result, index) => ({
+      id: `search-${index}`,
+      title: result.title,
+      description: result.snippet,
+      price: 0, // Price not available in search results
+      currency: 'USD',
+      merchant: new URL(result.link).hostname.replace('www.', ''),
+      imageUrl: '', // Image not available in basic search
+      productUrl: result.link,
+      affiliateUrl: result.link
+    }));
+
+    res.json({ products });
+  } catch (error: any) {
+    console.error('Error searching products:', error);
+    res.status(500).json({ error: error.message || 'Failed to search products' });
   }
 });
 

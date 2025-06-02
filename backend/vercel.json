@@ -10,11 +10,11 @@
   ],
   "routes": [
     {
-      "src": "/api/skimlinks/(.*)",
+      "src": "/api/dupes/(.*)",
       "dest": "src/index.ts"
     },
     {
-      "src": "/skimlinks/(.*)",
+      "src": "/api/products/(.*)",
       "dest": "src/index.ts"
     },
     {

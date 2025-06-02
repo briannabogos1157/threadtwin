@@ -32,7 +32,7 @@ function SearchContent() {
       setError('');
 
       try {
-        const response = await axios.get(`/api/skimlinks/search?query=${encodeURIComponent(query)}`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/dupes/find?query=${encodeURIComponent(query)}`);
         setProducts(response.data.products || []);
       } catch (err: any) {
         console.error('Search error:', err);
