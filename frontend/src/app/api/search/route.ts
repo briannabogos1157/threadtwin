@@ -46,6 +46,15 @@ export async function GET(request: NextRequest) {
       data: JSON.stringify(response.data, null, 2)
     });
 
+    // Transform the response to match the frontend's expected format
+    const products = response.data.products || [];
+    
+    if (!products || products.length === 0) {
+      console.log('[API Debug] No products found in response. Raw response:', response.data);
+    } else {
+      console.log(`[API Debug] Found ${products.length} products`);
+    }
+
     // Set CORS headers in the response
     const headers = {
       'Access-Control-Allow-Origin': isProduction ? 'https://www.threadtwin.com' : 'http://localhost:3000',
@@ -54,14 +63,8 @@ export async function GET(request: NextRequest) {
       'Access-Control-Allow-Credentials': 'true'
     };
 
-    // Check if we have products in the response
-    if (!response.data.products || response.data.products.length === 0) {
-      console.log('[API Debug] No products found in response. Full response:', response.data);
-    } else {
-      console.log(`[API Debug] Found ${response.data.products.length} products`);
-    }
-
-    return NextResponse.json(response.data, { headers });
+    // Return the products array directly
+    return NextResponse.json({ products }, { headers });
   } catch (error: any) {
     console.error('[API Debug] Search error:', {
       message: error.message,
@@ -88,7 +91,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(
-      { error: error.response?.data?.error || 'Failed to search products' },
+      { error: error.response?.data?.error || 'Failed to search products', products: [] },
       { 
         status: error.response?.status || 500,
         headers
