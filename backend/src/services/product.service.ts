@@ -1,121 +1,163 @@
-import { v4 as uuidv4 } from 'uuid';
-
-interface Product {
-  id: string;
-  title: string;
-  brand: string;
-  fabric: string;
-  price: string;
-  tags: string[];
-  description: string;
-  imageUrl: string;
-}
+import axios from 'axios';
+import { Product } from '../types/product';
 
 export class ProductService {
-  private static mockProducts: Product[] = [];
+  private readonly RETAIL_API_URL = process.env.RETAIL_API_URL || 'https://api.retail.com/v1';
+  private readonly RETAIL_API_KEY = process.env.RETAIL_API_KEY;
 
-  static initialize() {
-    // Initialize with mock products
-    if (this.mockProducts.length === 0) {
-      this.mockProducts = this.getFallbackProducts();
+  constructor() {
+    if (!this.RETAIL_API_KEY) {
+      console.warn('Retail API key not found, using mock data');
     }
   }
 
-  private static getFallbackProducts(): Product[] {
-    return [
+  async searchProducts(query: string): Promise<Product[]> {
+    console.log('[ProductService] Searching for query:', query);
+    
+    if (!this.RETAIL_API_KEY) {
+      // Fallback to mock data if no API key
+      return this.searchMockProducts(query);
+    }
+
+    try {
+      const response = await axios.get(`${this.RETAIL_API_URL}/products/search`, {
+        params: {
+          q: query,
+          limit: 20,
+          fields: 'id,title,description,price,currency,brand,images,url'
+        },
+        headers: {
+          'Authorization': `Bearer ${this.RETAIL_API_KEY}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      const products = response.data.products.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        price: item.price.toString(),
+        currency: item.currency || 'USD',
+        brand: item.brand,
+        imageUrl: item.images?.[0]?.url || '',
+        productUrl: item.url,
+        tags: item.tags || [],
+        fabric: item.fabric || 'Unknown'
+      }));
+
+      console.log(`[ProductService] Found ${products.length} real products`);
+      return products;
+    } catch (error) {
+      console.error('[ProductService] Error fetching real products:', error);
+      // Fallback to mock data if API call fails
+      return this.searchMockProducts(query);
+    }
+  }
+
+  private searchMockProducts(query: string): Product[] {
+    const mockProducts: Product[] = [
       {
-        id: uuidv4(),
-        title: "Soft Ribbed Midi Dress",
-        brand: "Zara",
-        fabric: "92% Cotton, 8% Elastane",
-        price: "39.99",
-        tags: ["minimal", "lounge", "dupe"],
-        description: "A comfortable ribbed midi dress perfect for everyday wear",
-        imageUrl: "https://picsum.photos/400/600?random=1"
+        id: '1',
+        title: 'Soft Ribbed Midi Dress',
+        description: 'A comfortable and stylish midi dress perfect for any occasion.',
+        price: '89.99',
+        currency: 'USD',
+        brand: 'Zara',
+        imageUrl: 'https://picsum.photos/400/600?random=1',
+        productUrl: 'https://www.zara.com/dress',
+        tags: ['dress', 'midi', 'casual'],
+        fabric: '95% Cotton, 5% Elastane'
       },
       {
-        id: uuidv4(),
-        title: "Classic Denim Jacket",
-        brand: "H&M",
-        fabric: "100% Cotton Denim",
-        price: "49.99",
-        tags: ["casual", "denim", "outerwear"],
-        description: "A timeless denim jacket with a relaxed fit and classic details",
-        imageUrl: "https://picsum.photos/400/600?random=2"
-      },
-      {
-        id: uuidv4(),
-        title: "High-Waist Leggings",
-        brand: "ASOS",
-        fabric: "75% Polyester, 25% Spandex",
-        price: "29.99",
-        tags: ["athleisure", "workout", "basics"],
-        description: "Comfortable high-waisted leggings perfect for workout or casual wear",
-        imageUrl: "https://picsum.photos/400/600?random=3"
-      },
-      {
-        id: uuidv4(),
-        title: "Oversized Knit Sweater",
-        brand: "Zara",
-        fabric: "60% Wool, 40% Acrylic",
-        price: "59.99",
-        tags: ["cozy", "winter", "knitwear"],
-        description: "A chunky knit sweater with dropped shoulders and ribbed details",
-        imageUrl: "https://picsum.photos/400/600?random=4"
-      },
-      {
-        id: uuidv4(),
-        title: "Pleated Mini Skirt",
-        brand: "H&M",
-        fabric: "100% Polyester",
-        price: "34.99",
-        tags: ["preppy", "feminine", "mini"],
-        description: "A playful pleated mini skirt with an elastic waistband",
-        imageUrl: "https://picsum.photos/400/600?random=5"
-      },
-      {
-        id: uuidv4(),
-        title: "Soft Lounge Long Dress",
-        brand: "SKIMS",
-        fabric: "95% Modal, 5% Spandex",
-        price: "88.00",
-        tags: ["loungewear", "comfortable", "luxury"],
-        description: "Ultra-soft long dress perfect for lounging and everyday wear",
-        imageUrl: "https://picsum.photos/400/600?random=6"
-      },
-      {
-        id: uuidv4(),
-        title: "Cotton Blend T-Shirt",
-        brand: "H&M",
-        fabric: "60% Cotton, 40% Polyester",
-        price: "12.99",
-        tags: ["basic", "casual", "essential"],
-        description: "A soft and comfortable t-shirt for everyday wear",
-        imageUrl: "https://picsum.photos/400/600?random=7"
-      },
-      {
-        id: uuidv4(),
-        title: "Wide-Leg Trousers",
-        brand: "Zara",
-        fabric: "65% Polyester, 35% Viscose",
-        price: "49.99",
-        tags: ["office", "formal", "elegant"],
-        description: "Elegant wide-leg trousers with a high waist and flowing silhouette",
-        imageUrl: "https://picsum.photos/400/600?random=8"
+        id: '2',
+        title: 'Soft Lounge Long Dress',
+        description: 'An elegant long dress for special occasions.',
+        price: '129.99',
+        currency: 'USD',
+        brand: 'SKIMS',
+        imageUrl: 'https://picsum.photos/400/600?random=2',
+        productUrl: 'https://www.skims.com/dress',
+        tags: ['dress', 'long', 'formal'],
+        fabric: '100% Silk'
       }
     ];
+
+    const searchTerm = query.toLowerCase();
+    const filteredProducts = mockProducts.filter(product => 
+      product.title.toLowerCase().includes(searchTerm) ||
+      product.description.toLowerCase().includes(searchTerm) ||
+      product.brand.toLowerCase().includes(searchTerm) ||
+      product.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+    );
+
+    console.log(`[ProductService] Found ${filteredProducts.length} mock products`);
+    return filteredProducts;
   }
 
-  static async searchProducts(query: string): Promise<Product[]> {
-    // Simple search implementation based on text matching
-    const searchTerms = query.toLowerCase().split(' ');
-    return this.mockProducts.filter(product => {
-      const productText = `${product.title} ${product.description} ${product.tags.join(' ')} ${product.brand}`.toLowerCase();
-      return searchTerms.some(term => productText.includes(term));
-    });
+  async getProductDetails(productId: string): Promise<Product | null> {
+    if (!this.RETAIL_API_KEY) {
+      // Fallback to mock data if no API key
+      return this.getMockProductDetails(productId);
+    }
+
+    try {
+      const response = await axios.get(`${this.RETAIL_API_URL}/products/${productId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.RETAIL_API_KEY}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      const item = response.data;
+      const product: Product = {
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        price: item.price.toString(),
+        currency: item.currency || 'USD',
+        brand: item.brand,
+        imageUrl: item.images?.[0]?.url || '',
+        productUrl: item.url,
+        tags: item.tags || [],
+        fabric: item.fabric || 'Unknown'
+      };
+
+      return product;
+    } catch (error) {
+      console.error('[ProductService] Error fetching product details:', error);
+      // Fallback to mock data if API call fails
+      return this.getMockProductDetails(productId);
+    }
   }
 
-  static getAllProducts(): Product[] {
-    return this.mockProducts;
+  private getMockProductDetails(productId: string): Product | null {
+    const mockProducts: Record<string, Product> = {
+      '1': {
+        id: '1',
+        title: 'Soft Ribbed Midi Dress',
+        description: 'A comfortable and stylish midi dress perfect for any occasion.',
+        price: '89.99',
+        currency: 'USD',
+        brand: 'Zara',
+        imageUrl: 'https://picsum.photos/400/600?random=1',
+        productUrl: 'https://www.zara.com/dress',
+        tags: ['dress', 'midi', 'casual'],
+        fabric: '95% Cotton, 5% Elastane'
+      },
+      '2': {
+        id: '2',
+        title: 'Soft Lounge Long Dress',
+        description: 'An elegant long dress for special occasions.',
+        price: '129.99',
+        currency: 'USD',
+        brand: 'SKIMS',
+        imageUrl: 'https://picsum.photos/400/600?random=2',
+        productUrl: 'https://www.skims.com/dress',
+        tags: ['dress', 'long', 'formal'],
+        fabric: '100% Silk'
+      }
+    };
+
+    return mockProducts[productId] || null;
   }
 } 

@@ -171,5 +171,15 @@ export default function Home() {
         </div>
       </section>
     </main>
+    <div className="w-full py-8 bg-gray-100 flex justify-center">
+      <a
+        href="https://docs.google.com/forms/d/e/1FAIpQLSffm9gG8p4nd4HYWbq6YMZFSVDKu-qKC8gXO0pxyoR_6cUVtg/viewform?embedded=true"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-700 font-semibold underline hover:text-blue-900 text-center text-lg"
+      >
+        Are you a small business? Apply to be featured on ThreadTwin 💻✨
+      </a>
+    </div>
   );
 } 

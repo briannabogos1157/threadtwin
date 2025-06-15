@@ -1,23 +1,23 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import axios from 'axios';
+import { useSearchParams, useRouter } from 'next/navigation';
+import api from '../../config/axios';
 
 interface Product {
   id: string;
   title: string;
   description: string;
-  price: number;
+  price: string;
   currency: string;
   merchant: string;
   imageUrl: string;
   productUrl: string;
-  affiliateUrl: string;
 }
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -32,11 +32,49 @@ function SearchContent() {
       setError('');
 
       try {
-        const response = await axios.get(`/api/search?query=${encodeURIComponent(query)}`);
-        setProducts(response.data.products || []);
+        console.log('[Search] Making request for query:', query);
+        const response = await api.get(`/api/products/search?query=${encodeURIComponent(query)}`);
+        console.log('[Search] Received response:', response.data);
+        
+        if (response.data.error) {
+          setError(response.data.error);
+          setProducts([]);
+          return;
+        }
+
+        if (!response.data.products) {
+          console.error('[Search] No products array in response:', response.data);
+          setError('Invalid response from server');
+          setProducts([]);
+          return;
+        }
+
+        // Transform the backend data to match our frontend interface
+        const transformedProducts = response.data.products.map((product: any) => ({
+          ...product,
+          currency: '$', // Add default currency
+          productUrl: product.imageUrl, // Use imageUrl as productUrl for now
+          affiliateUrl: product.imageUrl, // Use imageUrl as affiliateUrl for now
+          merchant: product.brand // Use brand as merchant
+        }));
+
+        console.log('[Search] Transformed products:', transformedProducts);
+        setProducts(transformedProducts);
       } catch (err: any) {
-        console.error('Search error:', err);
-        setError(err.response?.data?.error || 'Failed to search products');
+        console.error('[Search] Error:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        });
+        
+        if (err.response?.data?.error) {
+          setError(err.response.data.error);
+        } else if (err.message === 'Network Error') {
+          setError('Unable to connect to the search service. Please try again later.');
+        } else {
+          setError('An unexpected error occurred. Please try again.');
+        }
+        setProducts([]);
       } finally {
         setIsLoading(false);
       }
@@ -45,22 +83,33 @@ function SearchContent() {
     searchProducts();
   }, [searchParams]);
 
+  const handleFindDupes = (product: Product) => {
+    try {
+      const productData = {
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        price: product.price,
+        currency: product.currency,
+        merchant: product.merchant,
+        imageUrl: product.imageUrl,
+        productUrl: product.productUrl
+      };
+      localStorage.setItem('originalProduct', JSON.stringify(productData));
+      router.push('/product');
+    } catch (err) {
+      console.error('Error storing product data:', err);
+      setError('Failed to process product. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-white">
-        <nav className="border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-xl font-semibold">ThreadTwin</h1>
-              <div className="flex gap-6">
-                <a href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</a>
-                <a href="/about" className="text-sm text-gray-600 hover:text-gray-900">About</a>
-              </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
           </div>
-        </nav>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
         </div>
       </main>
     );
@@ -68,18 +117,6 @@ function SearchContent() {
 
   return (
     <main className="min-h-screen bg-white">
-      <nav className="border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl font-semibold">ThreadTwin</h1>
-            <div className="flex gap-6">
-              <a href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</a>
-              <a href="/about" className="text-sm text-gray-600 hover:text-gray-900">About</a>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         <h2 className="text-2xl font-medium mb-8">Search Results</h2>
 
@@ -114,9 +151,9 @@ function SearchContent() {
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">{product.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">
-                    {product.currency} {product.price.toFixed(2)}
+                    {product.currency} {product.price}
                   </span>
-                  <span className="text-xs text-gray-500">{product.merchant}</span>
+                  <span className="text-xs text-gray-500">{product.merchant || product.brand}</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <a
@@ -128,10 +165,7 @@ function SearchContent() {
                     View Original
                   </a>
                   <button
-                    onClick={() => {
-                      localStorage.setItem('originalProduct', JSON.stringify({ url: product.productUrl }));
-                      window.location.href = '/product';
-                    }}
+                    onClick={() => handleFindDupes(product)}
                     className="flex-1 px-3 py-1.5 text-xs text-center bg-black text-white rounded hover:bg-gray-800"
                   >
                     Find Dupes
@@ -150,19 +184,10 @@ export default function Search() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-white">
-        <nav className="border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-xl font-semibold">ThreadTwin</h1>
-              <div className="flex gap-6">
-                <a href="/" className="text-sm text-gray-600 hover:text-gray-900">Home</a>
-                <a href="/about" className="text-sm text-gray-600 hover:text-gray-900">About</a>
-              </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
           </div>
-        </nav>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
         </div>
       </main>
     }>

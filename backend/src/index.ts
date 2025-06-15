@@ -12,7 +12,7 @@ import apiRoutes from './routes/api';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3002;
+const port = parseInt(process.env.PORT || '3002', 10);
 
 // Enable trust proxy - required for rate limiting behind reverse proxies like Vercel
 app.set('trust proxy', 1);
@@ -26,7 +26,14 @@ const apiCorsOptions = {
           'https://threadtwin.com',
           'https://threadtwin-backend-f12a4jgla-briannas-projects-510aeadc.vercel.app'
         ] // Production origins
-      : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002']; // Development origins
+      : [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:3002',
+          'http://10.0.0.63:3000',
+          'http://10.0.0.63:3001',
+          'http://10.0.0.63:3002'
+        ]; // Development origins including local IP
     
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -298,8 +305,11 @@ app.post('/api/compare', async (req: Request, res: Response) => {
 app.use('/api/products', productRoutes);
 app.use('/api', apiRoutes);
 
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start the server
+const server = app.listen(port, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${port}`);
+  console.log(`Local access: http://localhost:${port}`);
+  console.log(`Network access: http://10.0.0.63:${port}`);
 });
 
 // Graceful shutdown

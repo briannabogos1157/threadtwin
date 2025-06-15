@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
 import '../../config/axios';
+import { useRouter } from 'next/navigation';
 
 interface ProductDetails {
   name: string;
@@ -29,35 +30,52 @@ interface ComparisonResult {
 }
 
 export default function Product() {
+  const router = useRouter();
   const [originalProduct, setOriginalProduct] = useState<ProductDetails | null>(null);
   const [dupeUrl, setDupeUrl] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
 
   useEffect(() => {
-    const loadProduct = async () => {
-      const savedProduct = localStorage.getItem('originalProduct');
-      if (!savedProduct) return;
-
-      const { url } = JSON.parse(savedProduct);
-      if (!url) return;
-
-      setIsLoading(true);
-      setError('');
-
-      try {
-        const response = await axios.post('/api/analyze', { url });
-        setOriginalProduct({ ...response.data, url });
-      } catch (err: any) {
-        console.error('Error loading product:', err);
-        setError(err.response?.data?.error || 'Failed to load product details');
-      } finally {
+    try {
+      const storedProduct = localStorage.getItem('originalProduct');
+      if (!storedProduct) {
+        setError('No product selected. Please return to the home page.');
         setIsLoading(false);
+        return;
       }
-    };
 
-    loadProduct();
+      const productData = JSON.parse(storedProduct);
+      if (!productData.url) {
+        setError('Invalid product data. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch product details from the backend
+      const fetchProductDetails = async () => {
+        try {
+          const response = await fetch(`/api/products/details?url=${encodeURIComponent(productData.url)}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch product details');
+          }
+          const data = await response.json();
+          setOriginalProduct(data);
+        } catch (err) {
+          console.error('Error fetching product details:', err);
+          setError('Failed to load product details. Please try again.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchProductDetails();
+    } catch (err) {
+      console.error('Error processing product data:', err);
+      setError('An error occurred. Please try again.');
+      setIsLoading(false);
+    }
   }, []);
 
   const handleCompare = async () => {
@@ -85,18 +103,50 @@ export default function Product() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-white p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
+      <main className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent"></div>
+          </div>
         </div>
       </main>
     );
   }
 
-  if (!originalProduct && !isLoading) {
+  if (error) {
     return (
-      <main className="min-h-screen bg-white p-6">
-        <p>No product selected. Please return to the <Link href="/" className="text-blue-500 hover:underline">home page</Link>.</p>
+      <main className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-medium mb-4">Error</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!originalProduct) {
+    return (
+      <main className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-medium mb-4">Product Not Found</h2>
+            <p className="text-gray-600 mb-6">The requested product could not be found.</p>
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+            >
+              Return to Home
+            </button>
+          </div>
+        </div>
       </main>
     );
   }

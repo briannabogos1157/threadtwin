@@ -1,45 +1,51 @@
 import axios from 'axios';
 
-// Set the base URL for all axios requests
-const apiUrl = process.env.NODE_ENV === 'production' 
-  ? 'https://threadtwin.vercel.app'  // Production API URL on Vercel
-  : 'http://localhost:3001';         // Local development URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
 
-console.log('Configuring axios with base URL:', apiUrl);
-axios.defaults.baseURL = apiUrl;
+// Configure axios with the correct backend URL
+const api = axios.create({
+  baseURL: BACKEND_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 5000, // 5 second timeout
+});
 
-// Add request interceptor for error handling
-axios.interceptors.request.use(
+// Add request interceptor for logging
+api.interceptors.request.use(
   (config) => {
-    // Log the full URL being requested
-    const fullUrl = `${axios.defaults.baseURL}${config.url}`;
-    console.log('Making request to:', fullUrl);
+    console.log('[API Request]', {
+      url: config.url,
+      method: config.method,
+      headers: config.headers,
+    });
     return config;
   },
   (error) => {
-    console.error('Request error:', error);
+    console.error('[API Request Error]', error);
     return Promise.reject(error);
   }
 );
 
-// Add response interceptor for error handling
-axios.interceptors.response.use(
+// Add response interceptor for logging
+api.interceptors.response.use(
   (response) => {
-    console.log('Received response:', {
+    console.log('[API Response]', {
       status: response.status,
-      url: response.config.url,
-      data: response.data
+      data: response.data,
+      headers: response.headers,
     });
     return response;
   },
   (error) => {
-    console.error('API Error:', {
+    console.error('[API Response Error]', {
       message: error.message,
+      code: error.code,
       response: error.response?.data,
       status: error.response?.status,
-      url: error.config?.url,
-      fullUrl: error.config?.baseURL + error.config?.url
     });
     return Promise.reject(error);
   }
-); 
+);
+
+export default api; 
