@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Home() {
   const [productUrl, setProductUrl] = useState('');
@@ -143,6 +144,30 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Submit Dupe CTA */}
+      <section className="py-16 bg-white">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Found a Great Dupe?
+          </h2>
+          <p className="text-xl text-gray-600 mb-8">
+            Share your fashion finds with our community and help others discover affordable alternatives.
+          </p>
+          <Link
+            href="/submit-dupe"
+            className="inline-flex items-center px-8 py-3 border border-transparent text-lg font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Submit Your Dupe
+            <svg className="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </Link>
+          <p className="mt-4 text-sm text-gray-500">
+            It only takes a minute to help others find great deals!
+          </p>
         </div>
       </section>
     </main>

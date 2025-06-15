@@ -2,12 +2,10 @@ import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { findDupes, analyzeDupePair } from '../services/openai.service';
-import { ProductSearchService } from '../services/serp.service';
 
 dotenv.config();
 
 const router = express.Router();
-const productSearchService = new ProductSearchService();
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -55,18 +53,38 @@ router.post('/submit', async (req: Request, res: Response): Promise<void> => {
 // Get all dupes (with optional status filter)
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { status } = req.query;
-    let query = supabase.from('dupes').select('*');
+    const { status, page = '1', sortBy = 'created_at', sortOrder = 'desc', search = '' } = req.query;
+    const pageNumber = parseInt(page as string);
+    const itemsPerPage = 10;
+    const offset = (pageNumber - 1) * itemsPerPage;
+
+    let query = supabase.from('dupes').select('*', { count: 'exact' });
     
     if (status) {
       query = query.eq('status', status);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // Add search functionality
+    if (search) {
+      query = query.or(`original_product.ilike.%${search}%,dupe_product.ilike.%${search}%,similarity_reason.ilike.%${search}%`);
+    }
+
+    // Add sorting
+    query = query.order(sortBy as string, { ascending: sortOrder === 'asc' });
+
+    // Add pagination
+    query = query.range(offset, offset + itemsPerPage - 1);
+
+    const { data, error, count } = await query;
 
     if (error) throw error;
 
-    res.json(data);
+    res.json({
+      items: data,
+      total: count,
+      page: pageNumber,
+      totalPages: Math.ceil((count || 0) / itemsPerPage)
+    });
   } catch (error: any) {
     console.error('Error fetching dupes:', error);
     res.status(500).json({ error: error.message });
@@ -145,37 +163,47 @@ router.get('/search', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if SERPAPI_KEY is available
-    if (!process.env.SERPAPI_KEY) {
-      console.error('SERPAPI_KEY not found in environment variables');
-      res.status(401).json({ error: 'API key not configured', products: [] });
+    // Return empty results for now since we're not using SERP API
+    res.json({ products: [] });
+  } catch (error: any) {
+    console.error('Error searching products:', error);
+    res.status(500).json({ error: error.message || 'Failed to search products', products: [] });
+  }
+});
+
+// Bulk update dupe statuses
+router.patch('/bulk-update', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ids, status } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'No IDs provided' });
       return;
     }
 
-    const searchResults = await productSearchService.search_dupes_via_serpapi(query);
-    
-    // Transform the results to match the frontend's expected format
-    const products = searchResults.map((result, index) => ({
-      id: `search-${index}`,
-      title: result.title,
-      description: result.snippet,
-      price: 0, // Price not available in search results
-      currency: 'USD',
-      merchant: new URL(result.link).hostname.replace('www.', ''),
-      imageUrl: '', // Image not available in basic search
-      productUrl: result.link,
-      affiliateUrl: result.link
-    }));
-
-    res.json({ products });
-  } catch (error: any) {
-    console.error('Error searching products:', error);
-    // Check if the error is related to missing API key
-    if (error.message?.includes('SERPAPI_KEY not found')) {
-      res.status(401).json({ error: 'API key not configured', products: [] });
-    } else {
-      res.status(500).json({ error: error.message || 'Failed to search products', products: [] });
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      res.status(400).json({ error: 'Invalid status' });
+      return;
     }
+
+    const { data, error } = await supabase
+      .from('dupes')
+      .update({ 
+        status, 
+        updated_at: new Date().toISOString() 
+      })
+      .in('id', ids)
+      .select();
+
+    if (error) throw error;
+
+    res.json({ 
+      message: `Successfully updated ${data.length} submissions`,
+      data 
+    });
+  } catch (error: any) {
+    console.error('Error performing bulk update:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

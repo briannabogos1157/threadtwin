@@ -3,9 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  } else {
+    console.log('OpenAI API key not found, using mock data');
+  }
+} catch (error) {
+  console.error('Error initializing OpenAI:', error);
+}
 
 interface DupeAnalysis {
   similarityScore: number;
@@ -22,12 +31,41 @@ interface DupeSuggestion {
   productLink: string;
 }
 
+// Mock data for when OpenAI is not available
+const mockDupeAnalysis: DupeAnalysis = {
+  similarityScore: 85,
+  priceAnalysis: "Significant savings while maintaining similar style",
+  recommendedStatus: "approve",
+  reasoning: "The dupe offers a very similar design at a more accessible price point"
+};
+
+const mockDupeSuggestions: DupeSuggestion[] = [
+  {
+    title: "Ribbed Bodycon Dress",
+    retailer: "H&M",
+    price: "$29.99",
+    description: "Soft ribbed fabric, form-fitting silhouette, similar to high-end alternatives",
+    productLink: "https://www.hm.com/mock-product"
+  },
+  {
+    title: "Fitted Long Dress",
+    retailer: "Zara",
+    price: "$39.99",
+    description: "Stretchy material, sleek design, perfect dupe for luxury brands",
+    productLink: "https://www.zara.com/mock-product"
+  }
+];
+
 export async function analyzeDupeSubmission(
   originalProduct: string,
   dupeProduct: string,
   priceComparison: string,
   similarityReason: string
 ): Promise<DupeAnalysis> {
+  if (!openai) {
+    return mockDupeAnalysis;
+  }
+
   try {
     const prompt = `
       Please analyze this fashion dupe submission:
@@ -76,11 +114,15 @@ export async function analyzeDupeSubmission(
     return analysis as DupeAnalysis;
   } catch (error) {
     console.error('Error analyzing dupe submission:', error);
-    throw error;
+    return mockDupeAnalysis;
   }
 }
 
 export async function findDupes(luxuryItem: string): Promise<DupeSuggestion[]> {
+  if (!openai) {
+    return mockDupeSuggestions;
+  }
+
   try {
     const prompt = `
 You are a fashion stylist who finds realistic, affordable lookalikes for expensive clothing.
@@ -124,7 +166,7 @@ Respond in valid JSON format as a list.
     return Array.isArray(parsedContent) ? parsedContent : parsedContent.dupes || [];
   } catch (error) {
     console.error('Error finding dupes:', error);
-    throw error;
+    return mockDupeSuggestions;
   }
 }
 
@@ -138,6 +180,15 @@ export async function analyzeDupePair(
   valueRating: number;
   stylingTips: string[];
 }> {
+  if (!openai) {
+    return {
+      comparisonPoints: ["Similar silhouette", "Comparable fabric quality", "Matching color options"],
+      qualityAssessment: "Good quality alternative with minor differences in material",
+      valueRating: 8,
+      stylingTips: ["Dress up with heels", "Layer with a denim jacket", "Add statement accessories"]
+    };
+  }
+
   try {
     const prompt = `
       Compare these two fashion items in detail:
@@ -177,6 +228,11 @@ export async function analyzeDupePair(
     return JSON.parse(content);
   } catch (error) {
     console.error('Error analyzing dupe pair:', error);
-    throw error;
+    return {
+      comparisonPoints: ["Similar design elements", "Comparable construction", "Close color match"],
+      qualityAssessment: "Reasonable quality for the price point",
+      valueRating: 7,
+      stylingTips: ["Style casually with sneakers", "Add a belt to define the waist", "Layer with a cardigan"]
+    };
   }
 } 

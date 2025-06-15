@@ -57,7 +57,7 @@ const basicCorsOptions = {
 };
 
 // Log all incoming requests for debugging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
   next();
 });

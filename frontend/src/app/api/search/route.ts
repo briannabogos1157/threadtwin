@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       ? 'https://threadtwin-backend-f12a4jgla-briannas-projects-510aeadc.vercel.app'  // Use Vercel deployment URL
       : 'http://localhost:3002';
 
-    const requestUrl = `${backendUrl}/api/dupes/search?query=${encodeURIComponent(query)}`;
+    const requestUrl = `${backendUrl}/api/products/search?query=${encodeURIComponent(query)}`;
     console.log('[API Debug] Request details:', {
       url: requestUrl,
       query: query,
