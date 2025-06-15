@@ -13,6 +13,7 @@ interface Product {
   merchant: string;
   imageUrl: string;
   productUrl: string;
+  brand?: string;
 }
 
 function SearchContent() {
