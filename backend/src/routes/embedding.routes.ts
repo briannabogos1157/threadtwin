@@ -18,19 +18,20 @@ router.post('/upload', async (req, res) => {
   }
 
   try {
-    const saved = await prisma.productEmbedding.create({
+    const result = await prisma.productEmbedding.create({
       data: {
         imageUrl,
         brand,
         price,
         material,
-        embedding,
+        embedding, // Ensure your schema accepts this as `Float[]`
       },
     });
-    return res.status(200).json(saved);
+
+    return res.status(200).json({ success: true, result });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Failed to save embedding' });
+    console.error("❌ Failed to save embedding:", err);
+    return res.status(500).json({ error: 'Failed to save embedding', details: err.message });
   }
 });
 
@@ -68,8 +69,8 @@ router.post('/find-similar', async (req, res) => {
 
     return res.status(200).json(results);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Similarity search failed' });
+    console.error("❌ Similarity search failed:", err);
+    return res.status(500).json({ error: 'Similarity search failed', details: err.message });
   }
 });
 
