@@ -4,11 +4,35 @@ import { Product } from '../types/product';
 export class ProductService {
   private readonly RETAIL_API_URL = process.env.RETAIL_API_URL || 'https://api.retail.com/v1';
   private readonly RETAIL_API_KEY = process.env.RETAIL_API_KEY;
+  private static instance: ProductService;
 
   constructor() {
     if (!this.RETAIL_API_KEY) {
       console.warn('Retail API key not found, using mock data');
     }
+  }
+
+  // Static methods for singleton pattern
+  static initialize(): void {
+    console.log('[ProductService] Initializing...');
+    if (!ProductService.instance) {
+      ProductService.instance = new ProductService();
+    }
+  }
+
+  static getAllProducts(): Product[] {
+    if (!ProductService.instance) {
+      ProductService.initialize();
+    }
+    // For now, return mock products. In a real implementation, this would fetch from database
+    return ProductService.instance.searchMockProducts('');
+  }
+
+  static async searchProducts(query: string): Promise<Product[]> {
+    if (!ProductService.instance) {
+      ProductService.initialize();
+    }
+    return ProductService.instance.searchProducts(query);
   }
 
   async searchProducts(query: string): Promise<Product[]> {
@@ -54,7 +78,7 @@ export class ProductService {
     }
   }
 
-  private searchMockProducts(query: string): Product[] {
+  searchMockProducts(query: string): Product[] {
     const mockProducts: Product[] = [
       {
         id: '1',

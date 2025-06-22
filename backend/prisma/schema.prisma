@@ -30,3 +30,13 @@ model products {
   @@index([brand, category], map: "idx_products_brand_category")
   @@index([url], map: "idx_products_url")
 }
+
+model ProductEmbedding {
+  id         String   @id @default(uuid())
+  imageUrl   String
+  brand      String?
+  price      Float?
+  material   String?
+  embedding  Json     // Store embedding as JSON array
+  createdAt  DateTime @default(now())
+}
