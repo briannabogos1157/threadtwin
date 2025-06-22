@@ -1,9 +1,8 @@
 import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../config/database';
 import cosineSimilarity from 'compute-cosine-similarity';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Upload embedding route
 router.post('/upload', async (req, res) => {
