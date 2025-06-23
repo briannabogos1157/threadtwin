@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "mkdir -p dist && echo 'This is a dummy output to satisfy Vercel' > dist/index.html",
+    "build": "./build.sh",
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint"
