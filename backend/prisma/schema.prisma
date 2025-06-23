@@ -34,9 +34,9 @@ model products {
 model ProductEmbedding {
   id        String   @id @default(uuid())
   imageUrl  String
-  brand     String
-  price     Float
-  material  String
-  embedding Float[] // 👈 MUST be Float[]
+  brand     String?
+  price     Float?
+  material  String?
+  embedding Json
   createdAt DateTime @default(now())
 }
