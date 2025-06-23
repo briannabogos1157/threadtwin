@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "echo \"This script is intentionally left blank. See vercel.json for build configuration.\"",
+    "build": "mkdir -p dist && echo 'This is a dummy output to satisfy Vercel' > dist/index.html",
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm run start",
     "lint": "cd frontend && npm run lint"
