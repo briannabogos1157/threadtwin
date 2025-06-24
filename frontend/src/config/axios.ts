@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
+const BACKEND_URL = 'https://api.threadtwin.com';
 
 // Configure axios with the correct backend URL
 const api = axios.create({
