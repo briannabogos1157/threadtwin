@@ -25,6 +25,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Embedding must be an array of numbers' });
     }
 
+    console.log(`📦 Input embedding dimensions: ${embedding.length}`);
+
     console.log('🔍 Testing database connection...');
     
     try {
@@ -52,29 +54,65 @@ export default async function handler(req, res) {
       console.log('🧮 Calculating similarities...');
       const similarities = allEmbeddings.map(item => {
         const itemEmbedding = item.embedding as number[];
-        const similarity = cosineSimilarity(embedding, itemEmbedding);
-        return {
-          id: item.id,
-          imageUrl: item.imageUrl,
-          brand: item.brand,
-          price: item.price,
-          material: item.material,
-          similarity: similarity || 0,
-          distance: 1 - (similarity || 0) // Convert similarity to distance
-        };
+        console.log(`📊 Item ${item.id} embedding dimensions: ${itemEmbedding.length}`);
+        
+        // Check if dimensions match
+        if (itemEmbedding.length !== embedding.length) {
+          console.log(`⚠️ Dimension mismatch: input=${embedding.length}, stored=${itemEmbedding.length}`);
+          return {
+            id: item.id,
+            imageUrl: item.imageUrl,
+            brand: item.brand,
+            price: item.price,
+            material: item.material,
+            similarity: 0,
+            distance: 1,
+            error: `Dimension mismatch: ${embedding.length} vs ${itemEmbedding.length}`
+          };
+        }
+        
+        try {
+          const similarity = cosineSimilarity(embedding, itemEmbedding);
+          return {
+            id: item.id,
+            imageUrl: item.imageUrl,
+            brand: item.brand,
+            price: item.price,
+            material: item.material,
+            similarity: similarity || 0,
+            distance: 1 - (similarity || 0)
+          };
+        } catch (calcError) {
+          console.error(`❌ Similarity calculation error for item ${item.id}:`, calcError);
+          return {
+            id: item.id,
+            imageUrl: item.imageUrl,
+            brand: item.brand,
+            price: item.price,
+            material: item.material,
+            similarity: 0,
+            distance: 1,
+            error: calcError.message
+          };
+        }
       });
 
-      // Sort by similarity (highest first) and return top 5
-      const results = similarities
+      // Filter out items with errors and sort by similarity (highest first)
+      const validResults = similarities.filter(item => !item.error);
+      const results = validResults
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, 5);
 
-      console.log(`✅ Found ${results.length} similar products`);
-      console.log('🏆 Top match similarity:', results[0]?.similarity);
+      console.log(`✅ Found ${results.length} similar products (${validResults.length} valid, ${similarities.length - validResults.length} with errors)`);
+      if (results.length > 0) {
+        console.log('🏆 Top match similarity:', results[0]?.similarity);
+      }
 
       return res.status(200).json({
         message: 'Similar products found',
         count: results.length,
+        totalValid: validResults.length,
+        totalWithErrors: similarities.length - validResults.length,
         results: results
       });
       
