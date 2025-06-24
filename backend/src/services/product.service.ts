@@ -87,7 +87,7 @@ export class ProductService {
         price: '89.99',
         currency: 'USD',
         brand: 'Zara',
-        imageUrl: 'https://picsum.photos/400/600?random=1',
+        imageUrl: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=600&fit=crop',
         productUrl: 'https://www.zara.com/dress',
         tags: ['dress', 'midi', 'casual'],
         fabric: '95% Cotton, 5% Elastane'
@@ -99,10 +99,34 @@ export class ProductService {
         price: '129.99',
         currency: 'USD',
         brand: 'SKIMS',
-        imageUrl: 'https://picsum.photos/400/600?random=2',
+        imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=600&fit=crop',
         productUrl: 'https://www.skims.com/dress',
         tags: ['dress', 'long', 'formal'],
         fabric: '100% Silk'
+      },
+      {
+        id: '3',
+        title: 'Classic White T-Shirt',
+        description: 'A timeless white t-shirt made from premium cotton.',
+        price: '29.99',
+        currency: 'USD',
+        brand: 'Uniqlo',
+        imageUrl: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=600&fit=crop',
+        productUrl: 'https://www.uniqlo.com/tshirt',
+        tags: ['tshirt', 'basic', 'casual'],
+        fabric: '100% Cotton'
+      },
+      {
+        id: '4',
+        title: 'High-Waisted Jeans',
+        description: 'Comfortable high-waisted jeans with a modern fit.',
+        price: '79.99',
+        currency: 'USD',
+        brand: 'Levi\'s',
+        imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?w=400&h=600&fit=crop',
+        productUrl: 'https://www.levis.com/jeans',
+        tags: ['jeans', 'denim', 'casual'],
+        fabric: '98% Cotton, 2% Elastane'
       }
     ];
 
@@ -163,7 +187,7 @@ export class ProductService {
         price: '89.99',
         currency: 'USD',
         brand: 'Zara',
-        imageUrl: 'https://picsum.photos/400/600?random=1',
+        imageUrl: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=400&h=600&fit=crop',
         productUrl: 'https://www.zara.com/dress',
         tags: ['dress', 'midi', 'casual'],
         fabric: '95% Cotton, 5% Elastane'
@@ -175,7 +199,7 @@ export class ProductService {
         price: '129.99',
         currency: 'USD',
         brand: 'SKIMS',
-        imageUrl: 'https://picsum.photos/400/600?random=2',
+        imageUrl: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=600&fit=crop',
         productUrl: 'https://www.skims.com/dress',
         tags: ['dress', 'long', 'formal'],
         fabric: '100% Silk'
