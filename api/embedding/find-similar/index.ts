@@ -1,4 +1,7 @@
+import { PrismaClient } from '@prisma/client';
 import cosineSimilarity from 'compute-cosine-similarity';
+
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   console.log('🔍 Find Similar API called');
@@ -22,19 +25,44 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Embedding must be an array of numbers' });
     }
 
-    console.log('🧮 Testing cosine similarity calculation...');
+    console.log('🔍 Fetching all embeddings from database...');
     
-    // Test with a dummy embedding to verify the function works
-    const testEmbedding = [0.1, 0.2, 0.3, 0.4, 0.5];
-    const similarity = cosineSimilarity(embedding.slice(0, 5), testEmbedding);
+    // Get all embeddings from database
+    const allEmbeddings = await prisma.productEmbedding.findMany();
+    console.log(`📊 Found ${allEmbeddings.length} products in database`);
     
-    console.log('✅ Cosine similarity calculation successful');
+    if (allEmbeddings.length === 0) {
+      console.log('⚠️ No products found in database');
+      return res.status(200).json({ 
+        message: 'No products found in database',
+        results: [] 
+      });
+    }
+    
+    // Calculate similarity for each embedding
+    console.log('🧮 Calculating similarities...');
+    const similarities = allEmbeddings.map(item => {
+      const itemEmbedding = item.embedding as number[];
+      const similarity = cosineSimilarity(embedding, itemEmbedding);
+      return {
+        ...item,
+        similarity: similarity || 0,
+        distance: 1 - (similarity || 0) // Convert similarity to distance
+      };
+    });
+
+    // Sort by similarity (highest first) and return top 5
+    const results = similarities
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 5);
+
+    console.log(`✅ Found ${results.length} similar products`);
+    console.log('🏆 Top match similarity:', results[0]?.similarity);
 
     return res.status(200).json({
-      message: 'Find similar API is working!',
-      testSimilarity: similarity,
-      receivedEmbeddingLength: embedding.length,
-      note: 'Database connection will be added next'
+      message: 'Similar products found',
+      count: results.length,
+      results: results
     });
     
   } catch (err) {
