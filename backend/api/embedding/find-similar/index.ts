@@ -50,30 +50,25 @@ export default async function handler(req, res) {
       const allEmbeddings = await prisma.productEmbedding.findMany();
       console.log(`📊 Retrieved ${allEmbeddings.length} products from database`);
       
-      // Calculate similarity for each embedding
+      // Calculate similarity for each embedding, skipping mismatched dimensions
       console.log('🧮 Calculating similarities...');
-      const similarities = allEmbeddings.map(item => {
+      const similarities = [];
+      let skippedCount = 0;
+      
+      for (const item of allEmbeddings) {
         const itemEmbedding = item.embedding as number[];
         console.log(`📊 Item ${item.id} embedding dimensions: ${itemEmbedding.length}`);
         
         // Check if dimensions match
         if (itemEmbedding.length !== embedding.length) {
-          console.log(`⚠️ Dimension mismatch: input=${embedding.length}, stored=${itemEmbedding.length}`);
-          return {
-            id: item.id,
-            imageUrl: item.imageUrl,
-            brand: item.brand,
-            price: item.price,
-            material: item.material,
-            similarity: 0,
-            distance: 1,
-            error: `Dimension mismatch: ${embedding.length} vs ${itemEmbedding.length}`
-          };
+          console.log(`⚠️ Skipping item ${item.id}: dimension mismatch (input=${embedding.length}, stored=${itemEmbedding.length})`);
+          skippedCount++;
+          continue;
         }
         
         try {
           const similarity = cosineSimilarity(embedding, itemEmbedding);
-          return {
+          similarities.push({
             id: item.id,
             imageUrl: item.imageUrl,
             brand: item.brand,
@@ -81,29 +76,19 @@ export default async function handler(req, res) {
             material: item.material,
             similarity: similarity || 0,
             distance: 1 - (similarity || 0)
-          };
+          });
         } catch (calcError) {
           console.error(`❌ Similarity calculation error for item ${item.id}:`, calcError);
-          return {
-            id: item.id,
-            imageUrl: item.imageUrl,
-            brand: item.brand,
-            price: item.price,
-            material: item.material,
-            similarity: 0,
-            distance: 1,
-            error: calcError.message
-          };
+          skippedCount++;
         }
-      });
+      }
 
-      // Filter out items with errors and sort by similarity (highest first)
-      const validResults = similarities.filter(item => !item.error);
-      const results = validResults
+      // Sort by similarity (highest first) and return top 5
+      const results = similarities
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, 5);
 
-      console.log(`✅ Found ${results.length} similar products (${validResults.length} valid, ${similarities.length - validResults.length} with errors)`);
+      console.log(`✅ Found ${results.length} similar products (${similarities.length} valid, ${skippedCount} skipped)`);
       if (results.length > 0) {
         console.log('🏆 Top match similarity:', results[0]?.similarity);
       }
@@ -111,8 +96,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         message: 'Similar products found',
         count: results.length,
-        totalValid: validResults.length,
-        totalWithErrors: similarities.length - validResults.length,
+        totalValid: similarities.length,
+        totalSkipped: skippedCount,
         results: results
       });
       
