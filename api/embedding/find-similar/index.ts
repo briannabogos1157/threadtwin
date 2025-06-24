@@ -1,7 +1,3 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
 export default async function handler(req, res) {
   console.log('🔍 Find Similar API called');
   
@@ -19,32 +15,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing embedding' });
     }
 
-    console.log('🔍 Testing database connection...');
-    
-    try {
-      await prisma.$connect();
-      console.log('✅ Database connected successfully');
-      
-      // Just get the count to test the connection
-      const count = await prisma.productEmbedding.count();
-      console.log(`📊 Found ${count} products in database`);
-      
-      return res.status(200).json({
-        message: 'Database connection successful',
-        count: count,
-        embeddingReceived: true,
-        dimensions: Array.isArray(embedding) ? embedding.length : 0
-      });
-      
-    } catch (dbError) {
-      console.error('❌ Database error:', dbError);
-      return res.status(500).json({ 
-        error: 'Database connection failed', 
-        details: dbError.message 
-      });
-    } finally {
-      await prisma.$disconnect();
-    }
+    console.log('✅ Basic validation passed');
+    console.log(`📦 Embedding dimensions: ${Array.isArray(embedding) ? embedding.length : 'not an array'}`);
+
+    // Return a simple test response
+    return res.status(200).json({
+      message: 'Basic endpoint test successful',
+      embeddingReceived: true,
+      dimensions: Array.isArray(embedding) ? embedding.length : 0,
+      count: 0,
+      results: []
+    });
     
   } catch (err) {
     console.error('❌ Find Similar API error:', err);
