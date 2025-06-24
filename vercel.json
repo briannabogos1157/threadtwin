@@ -3,11 +3,10 @@
   "builds": [
     {
       "src": "api/**/*.ts",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "backend/src/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["prisma/**/*"]
+      }
     },
     {
       "src": "frontend/package.json",
