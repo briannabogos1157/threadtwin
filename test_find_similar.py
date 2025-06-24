@@ -30,19 +30,45 @@ def test_find_similar():
         if response.status_code == 200:
             data = response.json()
             print("✅ Success!")
-            print(f"📈 Found {data.get('count', 0)} similar products")
             
-            if data.get('results'):
-                print("\n🏆 Top matches:")
-                for i, result in enumerate(data['results'][:3], 1):
-                    print(f"  {i}. Product ID: {result.get('id')}")
-                    print(f"     Similarity: {result.get('similarity', 0):.4f}")
-                    print(f"     Distance: {result.get('distance', 0):.4f}")
-                    if result.get('productName'):
-                        print(f"     Name: {result.get('productName')}")
-                    print()
+            # Handle both list and object response formats
+            if isinstance(data, list):
+                print(f"📈 Found {len(data)} similar products")
+                
+                if data:
+                    print("\n🏆 Top matches:")
+                    for i, result in enumerate(data[:3], 1):
+                        print(f"  {i}. Product ID: {result.get('id')}")
+                        print(f"     Similarity: {result.get('similarity', 0):.4f}")
+                        print(f"     Distance: {result.get('distance', 0):.4f}")
+                        if result.get('imageUrl'):
+                            print(f"     Image: {result.get('imageUrl')}")
+                        if result.get('brand'):
+                            print(f"     Brand: {result.get('brand')}")
+                        if result.get('price'):
+                            print(f"     Price: ${result.get('price')}")
+                        print()
+                else:
+                    print("ℹ️ No results returned")
             else:
-                print("ℹ️ No results returned")
+                # Handle object format (from serverless function)
+                print(f"📈 Found {data.get('count', 0)} similar products")
+                
+                if data.get('results'):
+                    print("\n🏆 Top matches:")
+                    for i, result in enumerate(data['results'][:3], 1):
+                        print(f"  {i}. Product ID: {result.get('id')}")
+                        print(f"     Similarity: {result.get('similarity', 0):.4f}")
+                        print(f"     Distance: {result.get('distance', 0):.4f}")
+                        if result.get('imageUrl'):
+                            print(f"     Image: {result.get('imageUrl')}")
+                        if result.get('brand'):
+                            print(f"     Brand: {result.get('brand')}")
+                        if result.get('price'):
+                            print(f"     Price: ${result.get('price')}")
+                        print()
+                else:
+                    print("ℹ️ No results returned")
         else:
             print("❌ Error response:")
             print(response.text)

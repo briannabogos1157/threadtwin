@@ -5,6 +5,6 @@
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://threadtwin.vercel.app"
+    "NEXT_PUBLIC_BACKEND_URL": "https://api.threadtwin.com"
   }
 } 
