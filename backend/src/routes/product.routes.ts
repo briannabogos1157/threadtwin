@@ -46,4 +46,45 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Admin: Add new product
+router.post('/admin/add', async (req, res) => {
+  try {
+    const { title, description, price, currency, brand, imageUrl, productUrl, tags, fabric } = req.body;
+    
+    console.log('[ProductRoutes] Adding new product:', { title, brand, price });
+    
+    // Validate required fields
+    if (!title || !description || !price || !brand || !imageUrl) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: title, description, price, brand, imageUrl' 
+      });
+    }
+
+    const newProduct = await ProductService.addProduct({
+      title,
+      description,
+      price: price.toString(),
+      currency: currency || 'USD',
+      brand,
+      imageUrl,
+      productUrl: productUrl || imageUrl,
+      tags: tags || [],
+      fabric: fabric || 'Unknown'
+    });
+
+    console.log('[ProductRoutes] Product added successfully:', newProduct.id);
+    return res.status(201).json({ 
+      success: true, 
+      product: newProduct,
+      message: 'Product added successfully' 
+    });
+  } catch (error) {
+    console.error('[ProductRoutes] Error adding product:', error);
+    return res.status(500).json({ 
+      error: 'Failed to add product',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 export default router; 
