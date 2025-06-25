@@ -4,7 +4,7 @@ import { Product } from '../types/product';
 export class ProductService {
   private readonly RETAIL_API_URL = process.env.RETAIL_API_URL || 'https://api.retail.com/v1';
   private readonly RETAIL_API_KEY = process.env.RETAIL_API_KEY;
-  private static instance: ProductService;
+  public static instance: ProductService;
   private mockProducts: Product[] = [];
 
   constructor() {
