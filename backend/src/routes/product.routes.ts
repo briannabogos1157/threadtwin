@@ -11,7 +11,7 @@ ProductService.initialize();
 router.get('/', async (_req, res) => {
   try {
     console.log('[ProductRoutes] Fetching all products...');
-    const products = ProductService.getAllProducts();
+    const products = await ProductService.getAllProducts();
     console.log(`[ProductRoutes] Found ${products.length} products`);
     return res.json(products);
   } catch (error) {
@@ -60,7 +60,7 @@ router.post('/admin/add', async (req, res) => {
       });
     }
 
-    const newProduct = ProductService.addProduct({
+    const newProduct = await ProductService.addProduct({
       title,
       description,
       price: price.toString(),
