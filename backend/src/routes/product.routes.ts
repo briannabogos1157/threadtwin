@@ -60,12 +60,7 @@ router.post('/admin/add', async (req, res) => {
       });
     }
 
-    // Get the instance and call the instance method
-    if (!ProductService.instance) {
-      ProductService.initialize();
-    }
-    
-    const newProduct = ProductService.instance.addProduct({
+    const newProduct = ProductService.addProduct({
       title,
       description,
       price: price.toString(),

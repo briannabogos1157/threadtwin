@@ -87,6 +87,13 @@ export class ProductService {
     return ProductService.instance.searchProducts(query);
   }
 
+  static addProduct(productData: Omit<Product, 'id'>): Product {
+    if (!ProductService.instance) {
+      ProductService.initialize();
+    }
+    return ProductService.instance.addProduct(productData);
+  }
+
   async searchProducts(query: string): Promise<Product[]> {
     console.log('[ProductService] Searching for query:', query);
     
