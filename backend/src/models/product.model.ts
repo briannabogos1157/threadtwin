@@ -1,3 +1,3 @@
-import prisma from '../config/database';
+/** Legacy placeholder; ORM/database catalog removed in favor of Manus. */
 
-export { prisma }; 
+export {};
