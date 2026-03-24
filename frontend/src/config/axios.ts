@@ -1,14 +1,17 @@
 import axios from 'axios';
 
-const BACKEND_URL = 'https://api.threadtwin.com';
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://api.threadtwin.com';
 
-// Configure axios with the correct backend URL
 const api = axios.create({
   baseURL: BACKEND_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 5000, // 5 second timeout
+  /** Analyze/compare/scrape can exceed a few seconds; Manus-backed calls need much longer. */
+  timeout: Number(process.env.NEXT_PUBLIC_AXIOS_TIMEOUT_MS) || 420_000,
 });
 
 // Add request interceptor for logging
@@ -38,12 +41,8 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('[API Response Error]', {
-      message: error.message,
-      code: error.code,
-      response: error.response?.data,
-      status: error.response?.status,
-    });
+    const ax = error as { message?: string; code?: string; response?: { status?: number; data?: unknown } };
+    console.error('[API Response Error]', ax.message, ax.code, ax.response?.status, ax.response?.data);
     return Promise.reject(error);
   }
 );

@@ -256,48 +256,79 @@ app.post('/api/compare', async (req: Request, res: Response) => {
     }
 
     console.log('Comparing products:', { originalUrl, dupeUrl });
-    
-    // Set timeout for the entire operation
-    const timeout = setTimeout(() => {
-      return res.status(504).json({ error: 'Request timeout' });
-    }, 60000); // 60 second timeout for comparison
+
+    const COMPARE_MS = Number(process.env.COMPARE_TIMEOUT_MS) || 120_000;
+    let compareDone = false;
+    const compareTimeout: NodeJS.Timeout = setTimeout(() => {
+      if (!compareDone && !res.headersSent) {
+        compareDone = true;
+        res.status(504).json({
+          error: 'Compare timed out — scraping both pages can take up to two minutes.',
+        });
+      }
+    }, COMPARE_MS);
 
     try {
       const [original, dupe] = await Promise.all([
         scraper.scrapeProduct(originalUrl),
-        scraper.scrapeProduct(dupeUrl)
+        scraper.scrapeProduct(dupeUrl),
       ]);
 
-      clearTimeout(timeout);
+      clearTimeout(compareTimeout);
 
-      if (!original.name || !dupe.name) {
-        return res.status(404).json({ error: 'Could not find product details for one or both items' });
+      if (compareDone) {
+        return;
       }
 
-      // Calculate similarity
+      if (!original.name || !dupe.name) {
+        compareDone = true;
+        return res.status(404).json({
+          error: 'Could not read product details from one or both pages (blocked site, login wall, or wrong page).',
+        });
+      }
+
       const matchBreakdown = similarityScorer.calculateSimilarity(original, dupe);
 
       const result = {
         original: { ...original, url: originalUrl },
         dupe: { ...dupe, url: dupeUrl },
-        matchBreakdown
+        matchBreakdown,
       };
 
-      // Store in cache
       cache.set(cacheKey, result);
       console.log('Comparison complete:', {
         original: original.name,
         dupe: dupe.name,
-        totalMatch: matchBreakdown.total
+        totalMatch: matchBreakdown.total,
       });
 
+      compareDone = true;
       return res.json(result);
     } catch (error) {
-      clearTimeout(timeout);
-      return res.status(500).json({ error: 'Internal server error' });
+      clearTimeout(compareTimeout);
+      if (compareDone) {
+        return;
+      }
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Compare scrape error:', message);
+      if (!res.headersSent) {
+        compareDone = true;
+        return res.status(502).json({
+          error: 'Could not scrape one or both product pages.',
+          details: message.slice(0, 500),
+        });
+      }
+      return;
     }
+
+    return;
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Compare handler error:', message);
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Compare failed', details: message.slice(0, 500) });
+    }
+    return;
   }
 });
 

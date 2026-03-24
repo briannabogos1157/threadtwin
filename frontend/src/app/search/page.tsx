@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import api from '../../config/axios';
 
 interface Product {
   id: string;
@@ -33,48 +32,52 @@ function SearchContent() {
       setError('');
 
       try {
-        console.log('[Search] Making request for query:', query);
-        const response = await api.get(`/api/products/search?query=${encodeURIComponent(query)}`);
-        console.log('[Search] Received response:', response.data);
-        
-        if (response.data.error) {
-          setError(response.data.error);
+        const response = await fetch(
+          `/api/products/search?query=${encodeURIComponent(query)}`,
+          { cache: 'no-store' }
+        );
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          setError(typeof data?.error === 'string' ? data.error : 'Search failed');
           setProducts([]);
           return;
         }
 
-        if (!response.data.products) {
-          console.error('[Search] No products array in response:', response.data);
+        if (data.error) {
+          setError(data.error);
+          setProducts([]);
+          return;
+        }
+
+        if (!Array.isArray(data.products)) {
           setError('Invalid response from server');
           setProducts([]);
           return;
         }
 
-        // Transform the backend data to match our frontend interface
-        const transformedProducts = response.data.products.map((product: any) => ({
-          ...product,
-          currency: '$', // Add default currency
-          productUrl: product.imageUrl, // Use imageUrl as productUrl for now
-          affiliateUrl: product.imageUrl, // Use imageUrl as affiliateUrl for now
-          merchant: product.brand // Use brand as merchant
-        }));
-
-        console.log('[Search] Transformed products:', transformedProducts);
-        setProducts(transformedProducts);
-      } catch (err: any) {
-        console.error('[Search] Error:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status
+        const transformedProducts = data.products.map((product: Record<string, unknown>) => {
+          const imageUrl = String(product.imageUrl ?? '');
+          const productUrl = String(product.productUrl ?? product.affiliateLink ?? imageUrl);
+          return {
+            id: String(product.id ?? ''),
+            title: String(product.title ?? ''),
+            description: String(product.description ?? ''),
+            price: String(product.price ?? ''),
+            currency: String(product.currency ?? 'USD'),
+            merchant: String(product.brand ?? ''),
+            imageUrl,
+            productUrl,
+            brand: product.brand ? String(product.brand) : undefined,
+          };
         });
-        
-        if (err.response?.data?.error) {
-          setError(err.response.data.error);
-        } else if (err.message === 'Network Error') {
-          setError('Unable to connect to the search service. Please try again later.');
-        } else {
-          setError('An unexpected error occurred. Please try again.');
-        }
+
+        setProducts(transformedProducts);
+      } catch (err: unknown) {
+        console.error('[Search] Error:', err);
+        setError(
+          err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.'
+        );
         setProducts([]);
       } finally {
         setIsLoading(false);
@@ -88,13 +91,15 @@ function SearchContent() {
     try {
       const productData = {
         id: product.id,
+        name: product.title,
         title: product.title,
         description: product.description,
         price: product.price,
         currency: product.currency,
         merchant: product.merchant,
         imageUrl: product.imageUrl,
-        productUrl: product.productUrl
+        productUrl: product.productUrl,
+        url: product.productUrl,
       };
       localStorage.setItem('originalProduct', JSON.stringify(productData));
       router.push('/product');
@@ -152,7 +157,7 @@ function SearchContent() {
                 <p className="text-xs text-gray-500 mb-2 line-clamp-2">{product.description}</p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">
-                    {product.currency} {product.price}
+                    {product.currency === 'USD' ? `$${product.price}` : `${product.currency} ${product.price}`}
                   </span>
                   <span className="text-xs text-gray-500">{product.merchant || product.brand}</span>
                 </div>

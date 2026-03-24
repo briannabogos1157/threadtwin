@@ -29,12 +29,39 @@ interface ComparisonResult {
   matchBreakdown: MatchBreakdown;
 }
 
+function normalizeShopUrl(raw: string): string {
+  const u = raw.trim();
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;
+  return `https://${u}`;
+}
+
+function productDetailsFromStored(stored: Record<string, unknown>, url: string): ProductDetails {
+  const name = String(stored.name ?? stored.title ?? 'Product');
+  const p = stored.price;
+  const price =
+    typeof p === 'number'
+      ? p
+      : parseFloat(String(p ?? '0').replace(/[^\d.]/g, '')) || 0;
+  const imageUrl = String(stored.imageUrl ?? stored.image ?? '');
+  return {
+    name,
+    price,
+    description: String(stored.description ?? ''),
+    imageUrl,
+    url,
+    fabric: stored.fabric ? String(stored.fabric) : undefined,
+  };
+}
+
 export default function Product() {
   const router = useRouter();
   const [originalProduct, setOriginalProduct] = useState<ProductDetails | null>(null);
   const [dupeUrl, setDupeUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  /** Non-fatal: live scrape failed but we show saved search/cart data */
+  const [notice, setNotice] = useState('');
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
 
   useEffect(() => {
@@ -46,25 +73,52 @@ export default function Product() {
         return;
       }
 
-      const productData = JSON.parse(storedProduct);
-      if (!productData.url) {
+      const productData = JSON.parse(storedProduct) as Record<string, unknown>;
+      const rawUrl = String(productData.url ?? productData.productUrl ?? '').trim();
+      const shopUrl = normalizeShopUrl(rawUrl);
+
+      if (!shopUrl) {
         setError('Invalid product data. Please try again.');
         setIsLoading(false);
         return;
       }
 
-      // Fetch product details from the backend
       const fetchProductDetails = async () => {
         try {
-          const response = await fetch(`/api/products/details?url=${encodeURIComponent(productData.url)}`);
+          const response = await fetch(
+            `/api/products/details?url=${encodeURIComponent(shopUrl)}`,
+            { cache: 'no-store' }
+          );
+          const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+
           if (!response.ok) {
-            throw new Error('Failed to fetch product details');
+            const apiErr = typeof data.error === 'string' ? data.error : null;
+            setOriginalProduct(productDetailsFromStored(productData, shopUrl));
+            setNotice(
+              apiErr
+                ? `Live refresh failed: ${apiErr} Showing saved details.`
+                : 'Could not refresh live details. Showing saved details.'
+            );
+            setError('');
+            return;
           }
-          const data = await response.json();
-          setOriginalProduct(data);
+
+          if (data.error) {
+            setOriginalProduct(productDetailsFromStored(productData, shopUrl));
+            setNotice(`Live refresh failed: ${data.error}. Showing saved details.`);
+            setError('');
+            return;
+          }
+
+          const live = data as unknown as ProductDetails;
+          setOriginalProduct({ ...live, url: live.url || shopUrl });
+          setError('');
+          setNotice('');
         } catch (err) {
           console.error('Error fetching product details:', err);
-          setError('Failed to load product details. Please try again.');
+          setOriginalProduct(productDetailsFromStored(productData, shopUrl));
+          setNotice('Network error while refreshing. Showing saved details.');
+          setError('');
         } finally {
           setIsLoading(false);
         }
@@ -86,6 +140,7 @@ export default function Product() {
 
     setIsLoading(true);
     setError('');
+    setNotice('');
 
     try {
       const response = await axios.post('/api/compare', {
@@ -95,7 +150,9 @@ export default function Product() {
       setComparisonResult(response.data);
     } catch (err: any) {
       console.error('Comparison error:', err);
-      setError(err.response?.data?.error || 'Failed to compare products');
+      const d = err.response?.data;
+      const msg = [d?.error, d?.details].filter(Boolean).join(' — ');
+      setError(msg || 'Failed to compare products');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +170,7 @@ export default function Product() {
     );
   }
 
-  if (error) {
+  if (error && !originalProduct) {
     return (
       <main className="min-h-screen bg-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -175,6 +232,14 @@ export default function Product() {
           </div>
         </div>
       </nav>
+
+      {notice ? (
+        <div className="max-w-7xl mx-auto px-6 pt-6">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {notice}
+          </div>
+        </div>
+      ) : null}
 
       {/* Product Details */}
       <div className="max-w-7xl mx-auto px-6 py-8">
