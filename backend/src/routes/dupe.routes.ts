@@ -1,16 +1,37 @@
 import express, { Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { findDupes, analyzeDupePair } from '../services/openai.service';
+import { findDupesWithManus, isManusConfigured } from '../services/manus.service';
+import {
+  insertDupe,
+  listDupes,
+  updateDupeStatus,
+  bulkUpdateStatus,
+} from '../services/dupeStore';
 
 dotenv.config();
 
 const router = express.Router();
 
-// Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+async function resolveDupeMatches(query: string): Promise<
+  { title: string; retailer: string; price: string; description: string; link: string }[]
+> {
+  const q = query.trim();
+  if (!q) return [];
+
+  if (isManusConfigured()) {
+    return findDupesWithManus(q);
+  }
+
+  const openaiDupes = await findDupes(q);
+  return openaiDupes.map((d) => ({
+    title: d.title,
+    retailer: d.retailer,
+    price: d.price,
+    description: d.description,
+    link: d.productLink,
+  }));
+}
 
 // Submit a new dupe
 router.post('/submit', async (req: Request, res: Response): Promise<void> => {
@@ -19,31 +40,22 @@ router.post('/submit', async (req: Request, res: Response): Promise<void> => {
       originalProduct,
       dupeProduct,
       priceComparison,
-      similarityReason
+      similarityReason,
     } = req.body;
 
-    // Validate required fields
     if (!originalProduct || !dupeProduct || !priceComparison || !similarityReason) {
       res.status(400).json({ error: 'All fields are required' });
       return;
     }
 
-    // Insert into database
-    const { data, error } = await supabase
-      .from('dupes')
-      .insert([
-        {
-          original_product: originalProduct,
-          dupe_product: dupeProduct,
-          price_comparison: priceComparison,
-          similarity_reason: similarityReason
-        }
-      ])
-      .select();
+    const row = insertDupe({
+      original_product: originalProduct,
+      dupe_product: dupeProduct,
+      price_comparison: priceComparison,
+      similarity_reason: similarityReason,
+    });
 
-    if (error) throw error;
-
-    res.status(201).json({ message: 'Dupe submitted successfully', data });
+    res.status(201).json({ message: 'Dupe submitted successfully', data: [row] });
   } catch (error: any) {
     console.error('Error submitting dupe:', error);
     res.status(500).json({ error: error.message });
@@ -54,36 +66,23 @@ router.post('/submit', async (req: Request, res: Response): Promise<void> => {
 router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, page = '1', sortBy = 'created_at', sortOrder = 'desc', search = '' } = req.query;
-    const pageNumber = parseInt(page as string);
+    const pageNumber = Math.max(1, parseInt(page as string, 10) || 1);
     const itemsPerPage = 10;
-    const offset = (pageNumber - 1) * itemsPerPage;
 
-    let query = supabase.from('dupes').select('*', { count: 'exact' });
-    
-    if (status) {
-      query = query.eq('status', status);
-    }
-
-    // Add search functionality
-    if (search) {
-      query = query.or(`original_product.ilike.%${search}%,dupe_product.ilike.%${search}%,similarity_reason.ilike.%${search}%`);
-    }
-
-    // Add sorting
-    query = query.order(sortBy as string, { ascending: sortOrder === 'asc' });
-
-    // Add pagination
-    query = query.range(offset, offset + itemsPerPage - 1);
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
+    const result = listDupes({
+      status: status as string | undefined,
+      page: pageNumber,
+      itemsPerPage,
+      sortBy: sortBy as string,
+      sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
+      search: (search as string) || '',
+    });
 
     res.json({
-      items: data,
-      total: count,
-      page: pageNumber,
-      totalPages: Math.ceil((count || 0) / itemsPerPage)
+      items: result.items,
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages,
     });
   } catch (error: any) {
     console.error('Error fetching dupes:', error);
@@ -102,13 +101,11 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { data, error } = await supabase
-      .from('dupes')
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
+    const data = updateDupeStatus(id, status);
+    if (data.length === 0) {
+      res.status(404).json({ error: 'Dupe not found' });
+      return;
+    }
 
     res.json(data);
   } catch (error: any) {
@@ -117,21 +114,39 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
   }
 });
 
-// Find dupes for a product using AI
+// Find dupes (Next.js DupeFinder and API gateway use this path)
+router.post('/find', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const luxuryItem = (req.body.luxuryItem || req.body.originalProduct || '') as string;
+
+    if (!luxuryItem?.trim()) {
+      res.status(400).json({ error: 'luxuryItem is required' });
+      return;
+    }
+
+    const matches = await resolveDupeMatches(luxuryItem);
+    res.json(matches);
+  } catch (error: any) {
+    console.error('Error finding dupes:', error);
+    res.status(500).json({ error: error.message || 'Failed to find dupes' });
+  }
+});
+
+// Find dupes for a product using AI (legacy body key)
 router.post('/find-dupes', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { originalProduct } = req.body;
+    const luxuryItem = (req.body.originalProduct || req.body.luxuryItem || '') as string;
 
-    if (!originalProduct) {
+    if (!luxuryItem?.trim()) {
       res.status(400).json({ error: 'Original product is required' });
       return;
     }
 
-    const suggestions = await findDupes(originalProduct);
-    res.json({ suggestions });
+    const matches = await resolveDupeMatches(luxuryItem);
+    res.json(matches);
   } catch (error: any) {
     console.error('Error finding dupes:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || 'Failed to find dupes' });
   }
 });
 
@@ -157,13 +172,12 @@ router.post('/analyze-pair', async (req: Request, res: Response): Promise<void> 
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
   try {
     const query = req.query.query as string;
-    
+
     if (!query) {
       res.status(400).json({ error: 'Search query is required' });
       return;
     }
 
-    // Return empty results for now since we're not using SERP API
     res.json({ products: [] });
   } catch (error: any) {
     console.error('Error searching products:', error);
@@ -186,20 +200,11 @@ router.patch('/bulk-update', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { data, error } = await supabase
-      .from('dupes')
-      .update({ 
-        status, 
-        updated_at: new Date().toISOString() 
-      })
-      .in('id', ids)
-      .select();
+    const data = bulkUpdateStatus(ids, status);
 
-    if (error) throw error;
-
-    res.json({ 
+    res.json({
       message: `Successfully updated ${data.length} submissions`,
-      data 
+      data,
     });
   } catch (error: any) {
     console.error('Error performing bulk update:', error);
@@ -207,4 +212,4 @@ router.patch('/bulk-update', async (req: Request, res: Response): Promise<void> 
   }
 });
 
-export default router; 
+export default router;

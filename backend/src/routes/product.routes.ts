@@ -46,6 +46,27 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// Single product by id (numeric)
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^\d+$/.test(id)) {
+      return res.status(400).json({ error: 'Invalid product id' });
+    }
+    const product = await ProductService.getProductDetails(id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    return res.json(product);
+  } catch (error) {
+    console.error('[ProductRoutes] Error fetching product:', error);
+    return res.status(500).json({
+      error: 'Failed to fetch product',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 // Admin: Add new product
 router.post('/admin/add', async (req, res) => {
   try {

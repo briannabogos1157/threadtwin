@@ -33,14 +33,19 @@ export default function DupeFinder() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to find dupes');
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to find dupes');
       }
 
-      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid response from dupe finder');
+      }
+
       setSuggestions(data);
     } catch (err) {
-      setError('Failed to find dupes. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to find dupes. Please try again.');
       console.error('Error:', err);
     } finally {
       setLoading(false);

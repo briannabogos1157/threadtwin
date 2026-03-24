@@ -1,33 +1,55 @@
-import { createClient } from '@supabase/supabase-js';
 import { Product } from '../types/product';
 
-const getSupabaseClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function backendBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:3002'
+  );
+}
 
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase environment variables are not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
-  }
+interface ApiProduct {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  brand: string;
+  imageUrl: string;
+  productUrl: string;
+  affiliateLink: string;
+  fabric?: string;
+}
 
-  return createClient(supabaseUrl, supabaseKey);
-};
+function mapToProduct(p: ApiProduct): Product {
+  const priceNum = parseFloat(p.price);
+  return {
+    id: Number(p.id),
+    title: p.title,
+    price: Number.isFinite(priceNum) ? priceNum : 0,
+    image_url: p.imageUrl,
+    affiliate_link: p.affiliateLink || p.productUrl,
+    brand: p.brand,
+    name: p.title,
+    description: p.description,
+    fabric: p.fabric,
+  };
+}
 
 export const productService = {
   async getProducts(): Promise<Product[]> {
     try {
       if (typeof window === 'undefined') {
-        // Return empty array during SSR/build time
         return [];
       }
 
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
+      const res = await fetch(`${backendBaseUrl()}/api/products`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        throw new Error(`Products request failed: ${res.status}`);
+      }
+      const data: ApiProduct[] = await res.json();
+      return Array.isArray(data) ? data.map(mapToProduct) : [];
     } catch (error) {
       console.error('Error fetching products:', error);
       return [];
@@ -37,22 +59,21 @@ export const productService = {
   async getProductById(id: number): Promise<Product | null> {
     try {
       if (typeof window === 'undefined') {
-        // Return null during SSR/build time
         return null;
       }
 
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data;
+      const res = await fetch(`${backendBaseUrl()}/api/products/${id}`, {
+        cache: 'no-store',
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        throw new Error(`Product request failed: ${res.status}`);
+      }
+      const data: ApiProduct = await res.json();
+      return mapToProduct(data);
     } catch (error) {
       console.error('Error fetching product:', error);
       return null;
     }
-  }
-}; 
+  },
+};

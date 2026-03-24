@@ -1,26 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const backendBase =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:3002';
 
 export async function POST(req: NextRequest) {
   try {
-    const { originalProduct, dupeProduct, priceComparison, similarityReason } = await req.json();
-    const { data, error } = await supabase.from('products').insert([
-      {
-        original_product: originalProduct,
-        dupe_product: dupeProduct,
-        price_comparison: priceComparison,
-        similarity_reason: similarityReason,
-      },
-    ]);
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const body = await req.json();
+    const response = await fetch(`${backendBase}/api/dupes/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: typeof data?.error === 'string' ? data.error : 'Submit failed' },
+        { status: response.status }
+      );
     }
-    return NextResponse.json({ success: true, data }, { status: 200 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 400 });
+
+    return NextResponse.json(data, { status: response.status });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Bad request';
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-} 
+}

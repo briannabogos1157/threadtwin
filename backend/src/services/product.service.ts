@@ -60,6 +60,7 @@ export class ProductService {
         brand: dbProduct.brand,
         imageUrl: dbProduct.image_url || dbProduct.image || '',
         productUrl: dbProduct.url,
+        affiliateLink: dbProduct.affiliate_link || dbProduct.url,
         tags: dbProduct.category ? [dbProduct.category] : [],
         fabric: dbProduct.fabric || 'Unknown'
       }));
@@ -102,6 +103,7 @@ export class ProductService {
         brand: item.brand,
         imageUrl: item.images?.[0]?.url || '',
         productUrl: item.url,
+        affiliateLink: item.url,
         tags: item.tags || [],
         fabric: item.fabric || 'Unknown'
       }));
@@ -141,6 +143,7 @@ export class ProductService {
         brand: dbProduct.brand,
         imageUrl: dbProduct.image_url || dbProduct.image || '',
         productUrl: dbProduct.url,
+        affiliateLink: dbProduct.affiliate_link || dbProduct.url,
         tags: dbProduct.category ? [dbProduct.category] : [],
         fabric: dbProduct.fabric || 'Unknown'
       }));
@@ -168,7 +171,7 @@ export class ProductService {
           image_url: productData.imageUrl,
           image: productData.imageUrl, // Also store in image field for compatibility
           url: productData.productUrl,
-          affiliate_link: productData.productUrl, // Use productUrl as affiliate_link
+          affiliate_link: productData.affiliateLink || productData.productUrl,
           fabric: productData.fabric,
           category: productData.tags?.[0] || null, // Use first tag as category
           source: 'manual' // Mark as manually added
@@ -184,6 +187,7 @@ export class ProductService {
         brand: newDbProduct.brand,
         imageUrl: newDbProduct.image_url || newDbProduct.image || '',
         productUrl: newDbProduct.url,
+        affiliateLink: newDbProduct.affiliate_link || newDbProduct.url,
         tags: newDbProduct.category ? [newDbProduct.category] : [],
         fabric: newDbProduct.fabric || 'Unknown'
       };
@@ -215,6 +219,7 @@ export class ProductService {
         brand: dbProduct.brand,
         imageUrl: dbProduct.image_url || dbProduct.image || '',
         productUrl: dbProduct.url,
+        affiliateLink: dbProduct.affiliate_link || dbProduct.url,
         tags: dbProduct.category ? [dbProduct.category] : [],
         fabric: dbProduct.fabric || 'Unknown'
       };

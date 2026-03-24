@@ -20,11 +20,14 @@ export async function POST(request: Request) {
       body: JSON.stringify({ luxuryItem }),
     });
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      throw new Error('Failed to fetch dupes from backend');
+      const message =
+        typeof data?.error === 'string' ? data.error : 'Failed to fetch dupes from backend';
+      return NextResponse.json({ error: message }, { status: response.status });
     }
 
-    const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error finding dupes:', error);

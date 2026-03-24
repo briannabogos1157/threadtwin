@@ -45,7 +45,9 @@ export default function AdminDupesPage() {
       if (!response.ok) throw new Error('Failed to fetch dupes');
       const data = await response.json();
       setDupes(data.items);
-      setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+      setTotalPages(
+        typeof data.totalPages === 'number' ? data.totalPages : Math.ceil((data.total || 0) / ITEMS_PER_PAGE) || 1
+      );
     } catch (error) {
       console.error('Error fetching dupes:', error);
       setError('Failed to load submissions. Please try again.');

@@ -7,6 +7,7 @@ export interface Product {
   brand: string;
   imageUrl: string;
   productUrl: string;
+  affiliateLink: string;
   tags: string[];
   fabric: string;
 } 
