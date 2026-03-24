@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidateUrls } from '@/lib/backendCandidates';
 
-/** Puppeteer analyze can exceed 30s. */
-const ANALYZE_TIMEOUT_MS = Number(process.env.PRODUCT_ANALYZE_PROXY_TIMEOUT_MS) || 120_000;
+/** Scrape + optional Manus fallback can take several minutes. */
+const ANALYZE_TIMEOUT_MS = Number(process.env.PRODUCT_ANALYZE_PROXY_TIMEOUT_MS) || 480_000;
 
 function buildDescription(data: Record<string, unknown>): string {
   const parts: string[] = [];
@@ -99,7 +99,14 @@ export async function GET(request: NextRequest) {
 
       const message =
         typeof data.error === 'string' ? data.error : 'Failed to analyze product URL';
-      return NextResponse.json({ error: message }, { status: response.status });
+      return NextResponse.json(
+        {
+          error: message,
+          details: typeof data.details === 'string' ? data.details : undefined,
+          hint: typeof data.hint === 'string' ? data.hint : undefined,
+        },
+        { status: response.status }
+      );
     } catch (err) {
       clearTimeout(timer);
       const aborted = err instanceof Error && err.name === 'AbortError';

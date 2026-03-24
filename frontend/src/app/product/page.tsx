@@ -36,6 +36,15 @@ function normalizeShopUrl(raw: string): string {
   return `https://${u}`;
 }
 
+function formatAnalyzeFailure(data: Record<string, unknown>): string {
+  const bits = [
+    typeof data.error === 'string' ? data.error : null,
+    typeof data.details === 'string' ? data.details : null,
+    typeof data.hint === 'string' ? data.hint : null,
+  ].filter(Boolean);
+  return bits.join(' — ') || 'Unknown error';
+}
+
 function productDetailsFromStored(stored: Record<string, unknown>, url: string): ProductDetails {
   const name = String(stored.name ?? stored.title ?? 'Product');
   const p = stored.price;
@@ -92,20 +101,15 @@ export default function Product() {
           const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
 
           if (!response.ok) {
-            const apiErr = typeof data.error === 'string' ? data.error : null;
             setOriginalProduct(productDetailsFromStored(productData, shopUrl));
-            setNotice(
-              apiErr
-                ? `Live refresh failed: ${apiErr} Showing saved details.`
-                : 'Could not refresh live details. Showing saved details.'
-            );
+            setNotice(`Live refresh failed: ${formatAnalyzeFailure(data)} Showing saved details.`);
             setError('');
             return;
           }
 
           if (data.error) {
             setOriginalProduct(productDetailsFromStored(productData, shopUrl));
-            setNotice(`Live refresh failed: ${data.error}. Showing saved details.`);
+            setNotice(`Live refresh failed: ${formatAnalyzeFailure(data)} Showing saved details.`);
             setError('');
             return;
           }

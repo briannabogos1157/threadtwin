@@ -257,6 +257,94 @@ function parseProductsFromManusText(text: string): Omit<Product, 'id'>[] {
   return out.slice(0, 20);
 }
 
+/** Matches scraper output for `POST /api/analyze`. */
+export interface AnalyzedProductScrapeShape {
+  name: string;
+  price: number;
+  fabricComposition: string[];
+  construction: string[];
+  fit: string[];
+  careInstructions: string[];
+  images: string[];
+  url?: string;
+}
+
+function toStringList(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v.map((x) => String(x).trim()).filter(Boolean);
+  }
+  if (typeof v === 'string' && v.trim()) {
+    return v
+      .split(/[,;|]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function toImageList(parsed: Record<string, unknown>, primary: string): string[] {
+  if (primary && /^https?:\/\//i.test(primary)) {
+    return [primary];
+  }
+  const imgs = parsed.images;
+  if (Array.isArray(imgs)) {
+    return imgs
+      .filter((x): x is string => typeof x === 'string' && /^https?:\/\//i.test(x))
+      .map((s) => s.trim());
+  }
+  return [];
+}
+
+/**
+ * When Puppeteer is blocked, Manus can still research the product URL.
+ */
+export async function analyzeProductUrlWithManus(
+  productUrl: string
+): Promise<AnalyzedProductScrapeShape> {
+  const prompt = `Analyze this e-commerce product page (fashion / apparel when relevant).
+
+Product URL: ${productUrl}
+
+Use web search or browsing to extract what a shopper would see. Return ONLY valid JSON (no markdown fences) in exactly this shape:
+{"name":"string","price":0,"description":"string","imageUrl":"https://...","fabricComposition":[],"construction":[],"fit":[],"careInstructions":[]}
+
+Rules:
+- name: required, non-empty product title.
+- price: number (use 0 if unknown or "see site").
+- Arrays: use [] if unknown; otherwise short keyword strings.
+- imageUrl: main product image URL, or "" if none.`;
+
+  const text = await runManusAgentTask(prompt);
+  const parsed = extractJsonValue(text) as Record<string, unknown> | null;
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Manus returned unparseable product JSON');
+  }
+
+  const name = String(parsed.name ?? parsed.title ?? '').trim();
+  if (!name) {
+    throw new Error('Manus returned an empty product name');
+  }
+
+  const priceRaw = parsed.price;
+  const price =
+    typeof priceRaw === 'number' && !Number.isNaN(priceRaw)
+      ? priceRaw
+      : parseFloat(String(priceRaw ?? '0').replace(/[^\d.]/g, '')) || 0;
+
+  const imageUrl = String(parsed.imageUrl ?? parsed.image ?? '').trim();
+
+  return {
+    name,
+    price,
+    fabricComposition: toStringList(parsed.fabricComposition ?? parsed.fabric),
+    construction: toStringList(parsed.construction),
+    fit: toStringList(parsed.fit),
+    careInstructions: toStringList(parsed.careInstructions ?? parsed.care),
+    images: toImageList(parsed, imageUrl),
+    url: productUrl,
+  };
+}
+
 /** Curate or search shoppable fashion products via Manus (no database). */
 export async function fetchProductsWithManus(searchQuery?: string): Promise<Omit<Product, 'id'>[]> {
   const q = searchQuery?.trim();

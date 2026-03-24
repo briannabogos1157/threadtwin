@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { getBackendCandidateUrls } from '@/lib/backendCandidates';
 
-const TIMEOUT_MS = Number(process.env.ANALYZE_PROXY_TIMEOUT_MS) || 120_000;
+const TIMEOUT_MS = Number(process.env.ANALYZE_PROXY_TIMEOUT_MS) || 480_000;
 
 export async function POST(request: NextRequest) {
   try {

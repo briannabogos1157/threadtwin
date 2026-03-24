@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
+import { analyzeProductUrlWithManus, isManusConfigured } from './services/manus.service';
 import productRoutes from './routes/product.routes';
 import apiRoutes from './routes/api';
 
@@ -175,12 +176,10 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // Routes
 app.post('/api/analyze', async (req: Request, res: Response) => {
-  let timeoutId: NodeJS.Timeout | null = null;
-  
   try {
     console.log('Received analyze request:', req.body);
     const { url } = req.body;
-    
+
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
@@ -189,7 +188,6 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    // Check cache first
     const cachedResult = cache.get(url);
     if (cachedResult) {
       console.log('Cache hit for URL:', url);
@@ -197,39 +195,56 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
     }
 
     console.log('Analyzing product:', url);
-    
-    // Set timeout for the entire operation
-    timeoutId = setTimeout(() => {
-      if (!res.headersSent) {
-        res.status(504).json({ error: 'Request timeout' });
-      }
-    }, 30000); // 30 second timeout
 
-    const productDetails = await scraper.scrapeProduct(url);
-    
-    if (timeoutId) {
-      clearTimeout(timeoutId);
+    const scrapeMs = Number(process.env.ANALYZE_SCRAPE_TIMEOUT_MS) || 75_000;
+
+    let productDetails: Awaited<ReturnType<typeof scraper.scrapeProduct>>;
+
+    try {
+      productDetails = await Promise.race([
+        scraper.scrapeProduct(url),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Scrape timeout')), scrapeMs);
+        }),
+      ]);
+
+      if (!productDetails.name || productDetails.name === 'Access Denied') {
+        throw new Error('Could not read product title (blocked or access denied)');
+      }
+    } catch (scrapeErr) {
+      const scrapeMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
+      console.warn('[analyze] scraper failed, message:', scrapeMsg);
+
+      if (!isManusConfigured()) {
+        return res.status(502).json({
+          error: 'Failed to analyze product',
+          details: scrapeMsg,
+          hint: 'Add MANUS_API_KEY to backend/.env for automatic fallback when sites block scraping.',
+        });
+      }
+
+      try {
+        productDetails = await analyzeProductUrlWithManus(url);
+        console.log('[analyze] Manus fallback OK:', productDetails.name);
+      } catch (manusErr) {
+        const manusMsg = manusErr instanceof Error ? manusErr.message : String(manusErr);
+        console.error('[analyze] Manus fallback failed:', manusMsg);
+        return res.status(502).json({
+          error: 'Failed to analyze product',
+          details: `${scrapeMsg} | Manus: ${manusMsg}`,
+        });
+      }
     }
-    
-    if (!productDetails.name || productDetails.name === 'Access Denied') {
-      return res.status(404).json({ error: 'Could not access product details. The website may be blocking our request.' });
-    }
-    
-    // Store in cache
+
     cache.set(url, productDetails);
     console.log('Product analysis complete:', productDetails.name);
-    
+
     return res.json(productDetails);
   } catch (error) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    
     console.error('Error analyzing product:', error);
-    
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to analyze product',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
