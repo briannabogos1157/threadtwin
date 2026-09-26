@@ -23,38 +23,12 @@ interface DupeAnalysis {
   reasoning: string;
 }
 
-interface DupeSuggestion {
-  title: string;
-  retailer: string;
-  price: string;
-  description: string;
-  productLink: string;
-}
-
-// Mock data for when OpenAI is not available
 const mockDupeAnalysis: DupeAnalysis = {
   similarityScore: 85,
   priceAnalysis: "Significant savings while maintaining similar style",
   recommendedStatus: "approve",
   reasoning: "The dupe offers a very similar design at a more accessible price point"
 };
-
-const mockDupeSuggestions: DupeSuggestion[] = [
-  {
-    title: "Ribbed Bodycon Dress",
-    retailer: "H&M",
-    price: "$29.99",
-    description: "Soft ribbed fabric, form-fitting silhouette, similar to high-end alternatives",
-    productLink: "https://www.hm.com/mock-product"
-  },
-  {
-    title: "Fitted Long Dress",
-    retailer: "Zara",
-    price: "$39.99",
-    description: "Stretchy material, sleek design, perfect dupe for luxury brands",
-    productLink: "https://www.zara.com/mock-product"
-  }
-];
 
 export async function analyzeDupeSubmission(
   originalProduct: string,
@@ -118,59 +92,6 @@ export async function analyzeDupeSubmission(
   }
 }
 
-export async function findDupes(luxuryItem: string): Promise<DupeSuggestion[]> {
-  if (!openai) {
-    return mockDupeSuggestions;
-  }
-
-  try {
-    const prompt = `
-You are a fashion stylist who finds realistic, affordable lookalikes for expensive clothing.
-
-The user is looking for affordable dupes of: "${luxuryItem}"
-
-Give 3 options from stores like H&M, Zara, ASOS, or Forever 21.
-
-For each, include:
-- title
-- retailer
-- price
-- description (focus on materials, construction, fit)
-- a realistic but fake product link
-
-Respond in valid JSON format as a list.
-`;
-
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: "You are a fashion stylist that generates realistic dupes."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      model: "gpt-3.5-turbo", // You can change this to "gpt-4" if you have access
-      temperature: 0.5,
-      response_format: { type: "json_object" }
-    });
-
-    const content = completion.choices[0].message.content;
-    if (!content) {
-      throw new Error('No content in OpenAI response');
-    }
-
-    const parsedContent = JSON.parse(content);
-    return Array.isArray(parsedContent) ? parsedContent : parsedContent.dupes || [];
-  } catch (error) {
-    console.error('Error finding dupes:', error);
-    return mockDupeSuggestions;
-  }
-}
-
-// Function to get more detailed analysis of a specific dupe
 export async function analyzeDupePair(
   originalProduct: string,
   dupeProduct: string

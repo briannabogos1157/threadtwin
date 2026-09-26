@@ -1,54 +1,141 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  DUPE_POLL_INTERVAL_MS,
+  dupeSearchIsFinished,
+  dupeSearchMessage,
+} from '@/lib/dupeSearchSession';
+import { formatMatchCategory, formatMatchCoverage, formatMatchHeadline, type MatchConfidence, type MatchStatus } from '@/lib/formatMatch';
 
 interface DupeSuggestion {
-  title: string;
+  name: string;
   retailer: string;
-  price: string;
-  description: string;
-  link: string;
+  url: string;
+  imageUrl?: string;
+  price: number;
+  originalPrice?: number | null;
+  onSale?: boolean;
+  fabric?: string;
+  match?: {
+    total: number;
+    fabric: number | null;
+    construction: number | null;
+    fit: number | null;
+    care: number | null;
+    fabricStatus?: MatchStatus;
+    constructionStatus?: MatchStatus;
+    fitStatus?: MatchStatus;
+    careStatus?: MatchStatus;
+    fabricNote?: string;
+    constructionNote?: string;
+    fitNote?: string;
+    careNote?: string;
+    comparableFacets?: number;
+    coverage?: number;
+    confidence?: MatchConfidence;
+  };
 }
 
 export default function DupeFinder() {
   const [luxuryItem, setLuxuryItem] = useState('');
-  const [suggestions, setSuggestions] = useState<DupeSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<DupeSuggestion[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
+  const pollRef = useRef<number | null>(null);
+
+  const stopPoll = () => {
+    if (pollRef.current != null) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  useEffect(() => () => stopPoll(), []);
+
+  const applyUpdate = (data: {
+    status?: string;
+    outcome?: 'results' | 'none' | 'unusable';
+    createdAt?: number;
+    results?: DupeSuggestion[];
+    error?: string;
+  }) => {
+    const status = data.status === 'complete' || data.status === 'unavailable' || data.status === 'searching'
+      ? data.status
+      : 'searching';
+    const results = Array.isArray(data.results) ? data.results : [];
+    const message = dupeSearchMessage({
+      status,
+      outcome: data.outcome,
+      createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
+      now: Date.now(),
+      resultCount: results.length,
+    });
+    setStatusMessage(message);
+    if (!dupeSearchIsFinished(status)) {
+      setLoading(true);
+      return;
+    }
+    stopPoll();
+    setLoading(false);
+    if (status === 'unavailable') {
+      setError(data.error || message);
+      setSuggestions(null);
+      return;
+    }
+    setSuggestions(data.outcome === 'unusable' ? null : results);
+  };
+
+  const pollSearch = async (searchId: string) => {
+    try {
+      const response = await fetch(`/api/dupes/find/${encodeURIComponent(searchId)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 404) {
+          stopPoll();
+          setLoading(false);
+          setError('Dupe search is temporarily unavailable');
+        }
+        return;
+      }
+      applyUpdate(data);
+    } catch {
+      // A single status request can time out while Manus is still working.
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    stopPoll();
     setLoading(true);
     setError('');
-    setSuggestions([]);
+    setSuggestions(null);
+    setStatusMessage('Searching for your twins…');
 
     try {
       const response = await fetch('/api/dupes/find', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          luxuryItem,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: { name: luxuryItem } }),
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Failed to find dupes');
+      if (!response.ok || !data?.searchId) {
+        throw new Error(
+          typeof data?.error === 'string' ? data.error : 'Dupe search is temporarily unavailable'
+        );
       }
-
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid response from dupe finder');
-      }
-
-      setSuggestions(data);
+      applyUpdate(data);
+      void pollSearch(data.searchId);
+      pollRef.current = window.setInterval(() => {
+        void pollSearch(data.searchId);
+      }, DUPE_POLL_INTERVAL_MS);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to find dupes. Please try again.');
-      console.error('Error:', err);
-    } finally {
+      stopPoll();
       setLoading(false);
+      setStatusMessage('');
+      setError(err instanceof Error ? err.message : 'Failed to find dupes. Please try again.');
     }
   };
 
@@ -84,9 +171,13 @@ export default function DupeFinder() {
             loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
         >
-          {loading ? 'Finding Dupes...' : 'Find Dupes'}
+          {loading ? 'Searching…' : 'Find Dupes'}
         </button>
       </form>
+
+      {statusMessage && (loading || !suggestions?.length) && !error ? (
+        <p className="text-sm text-gray-600 mb-8">{statusMessage}</p>
+      ) : null}
 
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-8">
@@ -94,43 +185,37 @@ export default function DupeFinder() {
         </div>
       )}
 
-      {suggestions.length > 0 && (
+      {suggestions && suggestions.length > 0 && (
         <div className="space-y-6">
           <h3 className="text-xl font-semibold">Suggested Dupes</h3>
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="bg-white shadow rounded-lg p-6 border border-gray-200"
+          {suggestions.map((suggestion) => (
+            <a
+              key={suggestion.url}
+              href={suggestion.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-white shadow rounded-lg p-6 border border-gray-200"
             >
-              <h4 className="text-lg font-medium text-gray-900">{suggestion.title}</h4>
-              <div className="mt-2 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Retailer</p>
-                  <p className="text-gray-900">{suggestion.retailer}</p>
+              <h4 className="text-lg font-medium text-gray-900">{suggestion.name}</h4>
+              <p className="text-sm text-gray-500 mt-1">{suggestion.retailer}</p>
+              <p className="mt-2 text-gray-900">
+                {suggestion.price > 0 ? `$${suggestion.price}` : 'Price unavailable'}
+                {suggestion.onSale && suggestion.originalPrice ? ` $${suggestion.originalPrice}` : ''}
+              </p>
+              {suggestion.fabric ? <p className="mt-2 text-gray-700">{suggestion.fabric}</p> : null}
+              {suggestion.match ? (
+                <div className="mt-2 text-sm text-gray-500 space-y-0.5">
+                  <p>{formatMatchHeadline(suggestion.match.total, suggestion.match.confidence)}</p>
+                  {formatMatchCoverage(suggestion.match.comparableFacets, suggestion.match.coverage) ? (
+                    <p>{formatMatchCoverage(suggestion.match.comparableFacets, suggestion.match.coverage)}</p>
+                  ) : null}
+                  <p>{formatMatchCategory('Fabric', suggestion.match.fabric, suggestion.match.fabricStatus, suggestion.match.fabricNote)}</p>
+                  <p>{formatMatchCategory('Construction', suggestion.match.construction, suggestion.match.constructionStatus, suggestion.match.constructionNote)}</p>
+                  <p>{formatMatchCategory('Fit', suggestion.match.fit, suggestion.match.fitStatus, suggestion.match.fitNote)}</p>
+                  <p>{formatMatchCategory('Care', suggestion.match.care, suggestion.match.careStatus, suggestion.match.careNote)}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Price</p>
-                  <p className="text-green-600 font-medium">{suggestion.price}</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <p className="text-sm text-gray-500">Description</p>
-                <p className="text-gray-700">{suggestion.description}</p>
-              </div>
-              <div className="mt-4">
-                <a
-                  href={suggestion.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                >
-                  View Product
-                  <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </a>
-              </div>
-            </div>
+              ) : null}
+            </a>
           ))}
         </div>
       )}

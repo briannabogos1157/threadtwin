@@ -1,39 +1,50 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getBackendCandidateUrls } from '@/lib/backendCandidates';
 
-export async function POST(request: Request) {
+const FIND_TIMEOUT_MS = Number(process.env.DUPE_SEARCH_PROXY_TIMEOUT_MS) || 30_000;
+
+export async function POST(request: NextRequest) {
   try {
-    const { luxuryItem } = await request.json();
+    const body = await request.json();
+    const bases = getBackendCandidateUrls();
+    let lastMessage = '';
 
-    if (!luxuryItem) {
-      return NextResponse.json(
-        { error: 'Luxury item is required' },
-        { status: 400 }
-      );
+    for (const base of bases) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FIND_TIMEOUT_MS);
+      try {
+        const response = await fetch(`${base}/api/dupes/find`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        const data = await response.json().catch(() => ({}));
+        return NextResponse.json(data, { status: response.status });
+      } catch (err) {
+        clearTimeout(timer);
+        const aborted = err instanceof Error && err.name === 'AbortError';
+        if (aborted) {
+          return NextResponse.json(
+            { error: 'Dupe search is temporarily unavailable' },
+            { status: 504 }
+          );
+        }
+        lastMessage = err instanceof Error ? err.message : String(err);
+      }
     }
 
-    // Call our backend API
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/dupes/find`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ luxuryItem }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const message =
-        typeof data?.error === 'string' ? data.error : 'Failed to fetch dupes from backend';
-      return NextResponse.json({ error: message }, { status: response.status });
-    }
-
-    return NextResponse.json(data);
+    console.error('[dupes/find] backends unreachable:', lastMessage);
+    return NextResponse.json(
+      { error: 'Dupe search is temporarily unavailable' },
+      { status: 503 }
+    );
   } catch (error) {
     console.error('Error finding dupes:', error);
     return NextResponse.json(
-      { error: 'Failed to find dupes' },
+      { error: 'Dupe search is temporarily unavailable' },
       { status: 500 }
     );
   }
-} 
+}

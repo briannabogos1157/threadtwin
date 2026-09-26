@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"commonjs\",\"moduleResolution\":\"node\",\"esModuleInterop\":true}' node --require ../backend/node_modules/ts-node/register --test src/lib/formatMaterialLabel.test.ts src/lib/fetchProductAnalysis.test.ts src/lib/blockedProduct.test.ts src/lib/dupeSearchRequest.test.ts src/lib/dupeSearchSession.test.ts src/lib/formatMatch.test.ts"
   },
   "dependencies": {
     "autoprefixer": "^10.4.21",
