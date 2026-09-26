@@ -172,7 +172,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
     cache: {
       keys: cache.keys().length,
       stats: cache.getStats()
-    }
+    },
+    manusConfigured: isManusConfigured(),
   };
   res.json(status);
 });

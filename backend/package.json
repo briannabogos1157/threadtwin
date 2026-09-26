@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@azure/openai": "^1.0.0-beta.11",
+    "@sparticuz/chromium": "^141.0.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/express-rate-limit": "^6.0.0",
@@ -32,6 +33,7 @@
     "node-cache": "^5.1.2",
     "openai": "^5.0.2",
     "puppeteer": "^24.9.0",
+    "puppeteer-core": "^24.23.1",
     "typescript": "^5.3.3",
     "uuid": "^9.0.1"
   },
