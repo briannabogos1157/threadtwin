@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendCandidateUrls } from '@/lib/backendCandidates';
+import { formatMaterialLabel } from '@/lib/formatMaterialLabel';
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim() !== '');
+}
 
 /** Scrape + optional Manus fallback can take several minutes. */
 const ANALYZE_TIMEOUT_MS = Number(process.env.PRODUCT_ANALYZE_PROXY_TIMEOUT_MS) || 480_000;
@@ -41,18 +47,33 @@ function mapAnalyzeToProduct(
       : parseFloat(String(priceRaw ?? '0')) || 0;
 
   const fabricComposition = data.fabricComposition;
-  const fabric =
+  const keywordFabric =
     Array.isArray(fabricComposition) && fabricComposition.length
       ? fabricComposition.filter((x): x is string => typeof x === 'string').join(', ')
-      : undefined;
+      : '';
+  const summary = typeof data.materialSummary === 'string' ? data.materialSummary : '';
+  const fabric = formatMaterialLabel(summary || keywordFabric) || undefined;
+
+  const realDescription = typeof data.description === 'string' ? data.description.trim() : '';
+  const description = realDescription || buildDescription(data);
+
+  const originalRaw = data.originalPrice;
+  const originalPrice = typeof originalRaw === 'number' && originalRaw > 0 ? originalRaw : null;
 
   return {
     name: String(data.name ?? ''),
     price,
-    description: buildDescription(data),
+    originalPrice,
+    onSale: data.onSale === true && originalPrice != null && originalPrice > price,
+    availability: typeof data.availability === 'string' ? data.availability : '',
+    description,
     imageUrl: firstImage,
     url: canonicalUrl,
     fabric,
+    fabricComposition: stringList(data.fabricComposition),
+    fit: stringList(data.fit),
+    construction: stringList(data.construction),
+    care: stringList(data.careInstructions),
   };
 }
 

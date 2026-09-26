@@ -7,6 +7,8 @@ import path from 'path';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 import { analyzeProductUrlWithManus, isManusConfigured } from './services/manus.service';
+import { dedupeInFlight } from './lib/dedupeInFlight';
+import { isRetailerBlock } from './lib/retailerBlock';
 import productRoutes from './routes/product.routes';
 import apiRoutes from './routes/api';
 
@@ -108,7 +110,8 @@ const limiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => false, // Never skip rate limiting
+  // Status polls run every few seconds for as long as Manus is working.
+  skip: (req) => req.method === 'GET' && /^\/api\/dupes\/find\/[A-Za-z0-9_-]{8,128}$/.test(req.path),
   handler: (req: any, res: Response) => {
     res.status(429).json({
       error: 'Too many requests, please try again later.',
@@ -174,6 +177,77 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json(status);
 });
 
+type ScrapedProduct = Awaited<ReturnType<typeof scraper.scrapeProduct>>;
+type AnalyzeOutcome =
+  | { ok: true; product: ScrapedProduct }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+const analyzeInflight = new Map<string, Promise<AnalyzeOutcome>>();
+
+async function analyzeUncached(url: string): Promise<AnalyzeOutcome> {
+  const scrapeMs = Number(process.env.ANALYZE_SCRAPE_TIMEOUT_MS) || 75_000;
+  let productDetails: ScrapedProduct;
+
+  try {
+    productDetails = await Promise.race([
+      scraper.scrapeProduct(url),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Scrape timeout')), scrapeMs);
+      }),
+    ]);
+
+    if (!productDetails.name || productDetails.name === 'Access Denied') {
+      throw new Error('Could not read product title (blocked or access denied)');
+    }
+  } catch (scrapeErr) {
+    const scrapeMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
+    console.warn('[analyze] scraper failed, message:', scrapeMsg);
+
+    if (isRetailerBlock(scrapeMsg)) {
+      return {
+        ok: false,
+        status: 502,
+        body: {
+          error: 'Failed to analyze product',
+          details: scrapeMsg,
+        },
+      };
+    }
+
+    if (!isManusConfigured()) {
+      return {
+        ok: false,
+        status: 502,
+        body: {
+          error: 'Failed to analyze product',
+          details: scrapeMsg,
+          hint: 'Add MANUS_API_KEY to backend/.env for automatic fallback when sites block scraping.',
+        },
+      };
+    }
+
+    try {
+      productDetails = await analyzeProductUrlWithManus(url);
+      console.log('[analyze] Manus fallback OK:', productDetails.name);
+    } catch (manusErr) {
+      const manusMsg = manusErr instanceof Error ? manusErr.message : String(manusErr);
+      console.error('[analyze] Manus fallback failed:', manusMsg);
+      return {
+        ok: false,
+        status: 502,
+        body: {
+          error: 'Failed to analyze product',
+          details: `${scrapeMsg} | Manus: ${manusMsg}`,
+        },
+      };
+    }
+  }
+
+  cache.set(url, productDetails);
+  console.log('Product analysis complete:', productDetails.name);
+  return { ok: true, product: productDetails };
+}
+
 // Routes
 app.post('/api/analyze', async (req: Request, res: Response) => {
   try {
@@ -195,51 +269,12 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
     }
 
     console.log('Analyzing product:', url);
-
-    const scrapeMs = Number(process.env.ANALYZE_SCRAPE_TIMEOUT_MS) || 75_000;
-
-    let productDetails: Awaited<ReturnType<typeof scraper.scrapeProduct>>;
-
-    try {
-      productDetails = await Promise.race([
-        scraper.scrapeProduct(url),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Scrape timeout')), scrapeMs);
-        }),
-      ]);
-
-      if (!productDetails.name || productDetails.name === 'Access Denied') {
-        throw new Error('Could not read product title (blocked or access denied)');
-      }
-    } catch (scrapeErr) {
-      const scrapeMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
-      console.warn('[analyze] scraper failed, message:', scrapeMsg);
-
-      if (!isManusConfigured()) {
-        return res.status(502).json({
-          error: 'Failed to analyze product',
-          details: scrapeMsg,
-          hint: 'Add MANUS_API_KEY to backend/.env for automatic fallback when sites block scraping.',
-        });
-      }
-
-      try {
-        productDetails = await analyzeProductUrlWithManus(url);
-        console.log('[analyze] Manus fallback OK:', productDetails.name);
-      } catch (manusErr) {
-        const manusMsg = manusErr instanceof Error ? manusErr.message : String(manusErr);
-        console.error('[analyze] Manus fallback failed:', manusMsg);
-        return res.status(502).json({
-          error: 'Failed to analyze product',
-          details: `${scrapeMsg} | Manus: ${manusMsg}`,
-        });
-      }
+    const outcome = await dedupeInFlight(analyzeInflight, url, () => analyzeUncached(url));
+    if (!outcome.ok) {
+      return res.status(outcome.status).json(outcome.body);
     }
 
-    cache.set(url, productDetails);
-    console.log('Product analysis complete:', productDetails.name);
-
-    return res.json(productDetails);
+    return res.json(outcome.product);
   } catch (error) {
     console.error('Error analyzing product:', error);
     return res.status(500).json({

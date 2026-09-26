@@ -1,9 +1,17 @@
 import puppeteer, { Page } from 'puppeteer';
+import { materialSummaryFrom } from './materialSummary';
+import { extractProductFacts } from './productFacts';
 
 interface ProductDetails {
   name: string;
   price: number;
+  originalPrice?: number | null;
+  onSale?: boolean;
+  availability?: string;
+  description?: string;
   fabricComposition: string[];
+  /** Display string. Percentages when present, otherwise fiber names. */
+  materialSummary?: string;
   construction: string[];
   fit: string[];
   careInstructions: string[];
@@ -33,7 +41,6 @@ class ProductScraper {
   ];
 
   private static readonly MAX_RETRIES = 3;
-  private static readonly SCRAPE_TIMEOUT = 60000; // 60 seconds
   private static readonly PAGE_TIMEOUT = 30000; // 30 seconds
 
   private async safeEval(page: Page, selector: string): Promise<string> {
@@ -55,7 +62,9 @@ class ProductScraper {
     try {
       return await operation();
     } catch (error) {
-      if (retries > 0) {
+      const message = error instanceof Error ? error.message : String(error);
+      const blocked = /HTTP 4\d\d/.test(message);
+      if (retries > 0 && !blocked) {
         console.log(`Retrying operation, ${retries} attempts remaining`);
         await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s between retries
         return this.retryOperation(operation, retries - 1);
@@ -67,9 +76,6 @@ class ProductScraper {
   async scrapeProduct(url: string): Promise<ProductDetails> {
     console.log('Starting to scrape URL:', url);
     let browser;
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Scraping timeout')), ProductScraper.SCRAPE_TIMEOUT)
-    );
 
     try {
       browser = await puppeteer.launch({
@@ -78,19 +84,27 @@ class ProductScraper {
       });
 
       const page = await browser.newPage();
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-      
+      await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36');
+      await page.setExtraHTTPHeaders({ 'accept-language': 'en-US,en;q=0.9' });
       await page.setDefaultNavigationTimeout(ProductScraper.PAGE_TIMEOUT);
 
-      // Navigate with retry
-      await this.retryOperation(async () => {
-        await Promise.race([
-          page.goto(url, { waitUntil: 'networkidle0' }),
-          timeoutPromise
-        ]);
+      const response = await this.retryOperation(async () => {
+        const result = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ProductScraper.PAGE_TIMEOUT });
+        if (result && result.status() >= 400) {
+          throw new Error(`Product page returned HTTP ${result.status()}`);
+        }
+        return result;
       });
+        await page.waitForFunction(
+          () => /\$\s*\d/.test(document.body?.innerText || ''),
+          { timeout: 8000 }
+        ).catch(() => undefined);
+        await page.waitForFunction(
+          () => /add to (bag|cart|basket)|sold out|out of stock|notify me|unavailable/i.test(document.body?.innerText || ''),
+          { timeout: 5000 }
+        ).catch(() => undefined);
 
-      console.log('Page loaded successfully');
+      console.log('Page loaded successfully', response?.status());
 
       // Initialize product details
       const details: ProductDetails = {
@@ -104,96 +118,86 @@ class ProductScraper {
         url: url
       };
 
-      // Log the page title for debugging
       const title = await page.title();
       console.log('Page title:', title);
 
-      // Extract product name (common selectors)
-      details.name = await this.safeEval(page, 'h1') ||
+      const html = await page.content();
+      const facts = extractProductFacts(html, url);
+
+      details.name = facts.name ||
+                    await this.safeEval(page, 'h1') ||
                     await this.safeEval(page, '.product-name') ||
-                    await this.safeEval(page, '.product-title') ||
-                    await this.safeEval(page, '[class*="product"][class*="title"]') ||
-                    await this.safeEval(page, '[class*="product"][class*="name"]');
-
-      console.log('Found product name:', details.name);
-
-      // Extract price with better handling
-      const priceText = await this.safeEval(page, '.price') ||
-                       await this.safeEval(page, '.product-price') ||
-                       await this.safeEval(page, '[class*="price"]');
-      
-      try {
-        details.price = this.extractPrice(priceText);
-      } catch (error) {
-        console.warn('Failed to extract price:', error);
-        details.price = 0;
+                    await this.safeEval(page, '.product-title');
+      if (/access denied|unusual activity|robot check|verify you are human|captcha/i.test(details.name)) {
+        throw new Error('Product page blocked the request');
       }
 
-      // Extract product description and details
-      const productDescription = await this.safeEval(page, '.product-description') ||
-                               await this.safeEval(page, '.details') ||
-                               await this.safeEval(page, '[class*="description"]') ||
-                               await this.safeEval(page, '[class*="details"]') ||
-                               await this.safeEval(page, 'p');
+      details.price = facts.price;
+      details.originalPrice = facts.originalPrice;
+      details.onSale = facts.onSale;
+      details.availability = facts.availability;
+      details.description = facts.description;
+      details.materialSummary = facts.materialSummary;
+      details.images = facts.images;
+      console.log('Found product name:', details.name);
+      console.log(`Selected price ${facts.price} sale=${facts.onSale} original=${facts.originalPrice ?? 'none'} availability=${facts.availability || 'unknown'}`);
 
-      console.log('Found product description length:', productDescription.length);
-      console.log('Product description:', productDescription);
+      const detailText = [facts.description, facts.materialSummary].filter(Boolean).join(' ');
 
       // Parse fabric composition
       details.fabricComposition = this.extractKeywords(
-        productDescription,
+        detailText,
         ProductScraper.FABRIC_KEYWORDS
       );
+      if (!details.materialSummary) {
+        details.materialSummary = materialSummaryFrom(detailText, details.fabricComposition);
+      }
       console.log('Found fabric composition:', details.fabricComposition);
+      console.log('Material summary:', details.materialSummary);
 
       // Parse construction details
       details.construction = this.extractKeywords(
-        productDescription,
+        detailText,
         ProductScraper.CONSTRUCTION_KEYWORDS
       );
       console.log('Found construction details:', details.construction);
 
       // Parse fit details
       details.fit = this.extractKeywords(
-        productDescription,
+        detailText,
         ProductScraper.FIT_KEYWORDS
       );
       console.log('Found fit details:', details.fit);
 
       // Parse care instructions
       details.careInstructions = this.extractKeywords(
-        productDescription,
+        detailText,
         ProductScraper.CARE_KEYWORDS
       );
       console.log('Found care instructions:', details.careInstructions);
 
-      // Enhanced image extraction
-      try {
-        const images = await page.$$eval('img[src]', imgs => 
-          imgs.map(img => {
-            const src = img.getAttribute('src');
-            const dataSrc = img.getAttribute('data-src');
-            return src || dataSrc;
-          })
-          .filter((src): src is string => 
-            src !== null && 
-            !src.includes('icon') && 
-            !src.includes('logo') &&
-            /\.(jpg|jpeg|png|webp|gif)/i.test(src)
-          )
-        );
-        
-        // Ensure absolute URLs
-        details.images = images.map(img => {
-          try {
-            return new URL(img, url).href;
-          } catch {
-            return img;
-          }
-        });
-      } catch (error) {
-        console.error('Failed to extract images:', error);
-        details.images = [];
+      if (!details.images.length) {
+        try {
+          const images = await page.$$eval('img[src]', imgs =>
+            imgs.map(img => img.getAttribute('src') || img.getAttribute('data-src') || '')
+              .filter(src =>
+                src &&
+                !src.includes('icon') &&
+                !src.includes('logo') &&
+                /\.(jpg|jpeg|png|webp|gif)/i.test(src)
+              )
+          );
+          details.images = images.map(img => {
+            try {
+              return new URL(img, url).href;
+            } catch {
+              return img;
+            }
+          });
+        } catch (error) {
+          console.error('Failed to extract images:', error);
+          details.images = [];
+        }
       }
 
       if (!details.name) {
@@ -217,20 +221,6 @@ class ProductScraper {
         }
       }
     }
-  }
-
-  private extractPrice(priceText: string): number {
-    console.log('Extracting price from:', priceText);
-    // Handle various price formats
-    const cleanText = priceText.replace(/[^\d.,]/g, '');
-    const match = cleanText.match(/([\d,]+\.?\d*)|(\d*\.\d+)/);
-    if (!match) return 0;
-    
-    const price = parseFloat(match[0].replace(/,/g, ''));
-    if (isNaN(price)) return 0;
-    
-    console.log('Extracted price:', price);
-    return price;
   }
 
   private extractKeywords(text: string, keywords: string[]): string[] {

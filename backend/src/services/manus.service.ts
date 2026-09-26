@@ -80,7 +80,16 @@ function extractJsonValue(text: string): unknown {
   }
 }
 
-export async function runManusAgentTask(prompt: string): Promise<string> {
+function manusHeaders(apiKey: string): Record<string, string> {
+  return {
+    accept: 'application/json',
+    'content-type': 'application/json',
+    API_KEY: apiKey,
+  };
+}
+
+/** POST /v1/tasks. Returns as soon as Manus accepts the job. */
+export async function createManusTask(prompt: string): Promise<string> {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('MANUS_API_KEY is not configured');
@@ -92,16 +101,13 @@ export async function runManusAgentTask(prompt: string): Promise<string> {
 
   const createRes = await fetch(`${MANUS_API}/tasks`, {
     method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      API_KEY: apiKey,
-    },
+    headers: manusHeaders(apiKey),
     body: JSON.stringify({
       prompt,
       agentProfile,
       taskMode: 'agent',
     }),
+    signal: AbortSignal.timeout(20_000),
   });
 
   if (!createRes.ok) {
@@ -114,28 +120,214 @@ export async function runManusAgentTask(prompt: string): Promise<string> {
   if (!taskId) {
     throw new Error('Manus response missing task id');
   }
+  return taskId;
+}
 
+/** GET /v1/tasks/{task_id}. One status read; it does not wait for completion. */
+export async function fetchManusTask(taskId: string): Promise<ManusTaskResponse> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('MANUS_API_KEY is not configured');
+  }
+
+  const getRes = await fetch(`${MANUS_API}/tasks/${encodeURIComponent(taskId)}`, {
+    method: 'GET',
+    headers: manusHeaders(apiKey),
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (!getRes.ok) {
+    const errBody = await getRes.text();
+    throw new Error(`Manus get task failed: ${getRes.status} ${errBody}`);
+  }
+
+  return (await getRes.json()) as ManusTaskResponse;
+}
+
+export function manusTaskText(task: ManusTaskResponse): string {
+  return collectAssistantText(task);
+}
+
+export interface DupeManusRead {
+  phase: 'searching' | 'failed' | 'finished';
+  error?: string;
+  assistantText: string;
+  structured: { success: boolean; value: unknown; error?: string | null } | null;
+}
+
+const DUPE_OUTPUT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['products'],
+  properties: {
+    products: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: [
+          'name',
+          'retailer',
+          'url',
+          'imageUrl',
+          'currentPrice',
+          'originalPrice',
+          'currency',
+          'fabric',
+          'fit',
+          'construction',
+          'care',
+          'availability',
+        ],
+        properties: {
+          name: { type: 'string' },
+          retailer: { type: 'string' },
+          url: { type: 'string' },
+          imageUrl: { type: ['string', 'null'] },
+          currentPrice: { type: ['number', 'null'] },
+          originalPrice: { type: ['number', 'null'] },
+          currency: { type: ['string', 'null'] },
+          fabric: { type: ['string', 'null'] },
+          fit: { type: ['string', 'null'] },
+          construction: { type: 'array', items: { type: 'string' } },
+          care: { type: 'array', items: { type: 'string' } },
+          availability: {
+            type: 'string',
+            enum: ['in_stock', 'out_of_stock', 'unknown'],
+          },
+        },
+      },
+    },
+  },
+};
+
+async function manusV2(path: string, init?: RequestInit): Promise<unknown> {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error('MANUS_API_KEY is not configured');
+  const response = await fetch(`${MANUS_API.replace('/v1', '')}/v2/${path}`, {
+    ...init,
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'x-manus-api-key': apiKey,
+      ...(init?.headers || {}),
+    },
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || (body && typeof body === 'object' && (body as { ok?: boolean }).ok === false)) {
+    const message = body && typeof body === 'object'
+      ? JSON.stringify((body as { error?: unknown }).error || body)
+      : '';
+    throw new Error(`Manus ${path.split('?')[0]} failed: ${response.status} ${message}`);
+  }
+  return body;
+}
+
+/** v2 task.create with a JSON schema. Returns when Manus accepts the job. */
+export async function createManusDupeTask(prompt: string): Promise<string> {
+  const created = await manusV2('task.create', {
+    method: 'POST',
+    body: JSON.stringify({
+      message: { content: prompt },
+      agent_profile: 'standard',
+      interactive_mode: false,
+      structured_output_schema: DUPE_OUTPUT_SCHEMA,
+    }),
+  }) as { task_id?: string };
+  if (!created.task_id) throw new Error('Manus response missing task id');
+  return created.task_id;
+}
+
+function messageText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (!Array.isArray(value)) return '';
+  return value.map((part) => {
+    if (!part || typeof part !== 'object') return '';
+    const record = part as { text?: unknown };
+    return typeof record.text === 'string' ? record.text : '';
+  }).filter(Boolean).join('\n');
+}
+
+/** One v2 status read. stopped is finished only when the answer event is present or absent for good. */
+export async function readManusDupeTask(taskId: string): Promise<DupeManusRead> {
+  const messages: unknown[] = [];
+  let cursor = '';
+  for (let page = 0; page < 6; page += 1) {
+    const query = new URLSearchParams({ task_id: taskId, order: 'asc', limit: '100' });
+    if (cursor) query.set('cursor', cursor);
+    const listed = await manusV2(`task.listMessages?${query.toString()}`) as {
+      messages?: unknown[];
+      has_more?: boolean;
+      next_cursor?: string;
+    };
+    if (Array.isArray(listed.messages)) messages.push(...listed.messages);
+    if (!listed.has_more || !listed.next_cursor) break;
+    cursor = listed.next_cursor;
+  }
+  let phase: DupeManusRead['phase'] = 'searching';
+  let error = '';
+  const assistant: string[] = [];
+  let structured: DupeManusRead['structured'] = null;
+
+  for (const message of messages) {
+    if (!message || typeof message !== 'object') continue;
+    const record = message as Record<string, unknown>;
+    const statusUpdate = record.status_update;
+    if (statusUpdate && typeof statusUpdate === 'object') {
+      const update = statusUpdate as { agent_status?: string; status_detail?: { waiting_for_event_type?: string } };
+      if (update.agent_status === 'running') phase = 'searching';
+      if (update.agent_status === 'waiting') {
+        phase = 'searching';
+        console.log('Dupe search waiting:', taskId, update.status_detail?.waiting_for_event_type || 'input');
+      }
+      if (update.agent_status === 'error') phase = 'failed';
+      if (update.agent_status === 'stopped') phase = 'finished';
+    }
+    const assistantMessage = record.assistant_message;
+    if (assistantMessage && typeof assistantMessage === 'object') {
+      const text = messageText((assistantMessage as { content?: unknown }).content);
+      if (text) assistant.push(text);
+    }
+    const errorMessage = record.error_message;
+    if (errorMessage && typeof errorMessage === 'object') {
+      const recordError = errorMessage as { error?: unknown; message?: unknown; content?: unknown };
+      error = String(recordError.error || recordError.message || recordError.content || 'Manus task failed');
+      phase = 'failed';
+    }
+    const extracted = record.structured_output_result;
+    if (extracted && typeof extracted === 'object') {
+      const result = extracted as { success?: boolean; value?: unknown; error?: string | null };
+      structured = {
+        success: result.success === true,
+        value: result.value,
+        error: result.error,
+      };
+    }
+  }
+
+  if (phase === 'searching') {
+    return { phase, assistantText: '', structured: null };
+  }
+  if (phase === 'failed') {
+    return { phase, error: error || 'Manus task failed', assistantText: '', structured: null };
+  }
+  return {
+    phase: 'finished',
+    assistantText: assistant.join('\n').trim(),
+    structured,
+  };
+}
+
+export async function runManusAgentTask(prompt: string): Promise<string> {
+  const taskId = await createManusTask(prompt);
   const maxWaitMs = Number(process.env.MANUS_TASK_MAX_WAIT_MS) || 420_000;
   const pollIntervalMs = Number(process.env.MANUS_POLL_INTERVAL_MS) || 4_000;
   const started = Date.now();
 
   while (Date.now() - started < maxWaitMs) {
     await sleep(pollIntervalMs);
-
-    const getRes = await fetch(`${MANUS_API}/tasks/${encodeURIComponent(taskId)}`, {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        API_KEY: apiKey,
-      },
-    });
-
-    if (!getRes.ok) {
-      const errBody = await getRes.text();
-      throw new Error(`Manus get task failed: ${getRes.status} ${errBody}`);
-    }
-
-    const task = (await getRes.json()) as ManusTaskResponse;
+    const task = await fetchManusTask(taskId);
 
     if (task.status === 'failed') {
       throw new Error(task.error || 'Manus task failed');

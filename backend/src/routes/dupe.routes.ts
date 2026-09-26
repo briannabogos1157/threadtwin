@@ -1,7 +1,13 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
-import { findDupes, analyzeDupePair } from '../services/openai.service';
-import { findDupesWithManus, isManusConfigured } from '../services/manus.service';
+import { analyzeDupePair } from '../services/openai.service';
+import { isManusConfigured } from '../services/manus.service';
+import {
+  isDupeSearchUnavailable,
+  normalizeSearchProduct,
+  readDupeSearch,
+  startDupeSearch,
+} from '../services/dupeSearch';
 import {
   insertDupe,
   listDupes,
@@ -13,24 +19,8 @@ dotenv.config();
 
 const router = express.Router();
 
-async function resolveDupeMatches(query: string): Promise<
-  { title: string; retailer: string; price: string; description: string; link: string }[]
-> {
-  const q = query.trim();
-  if (!q) return [];
-
-  if (isManusConfigured()) {
-    return findDupesWithManus(q);
-  }
-
-  const openaiDupes = await findDupes(q);
-  return openaiDupes.map((d) => ({
-    title: d.title,
-    retailer: d.retailer,
-    price: d.price,
-    description: d.description,
-    link: d.productLink,
-  }));
+function unavailable(res: Response): void {
+  res.status(503).json({ error: 'Dupe search is temporarily unavailable' });
 }
 
 // Submit a new dupe
@@ -114,40 +104,65 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
   }
 });
 
-// Find dupes (Next.js DupeFinder and API gateway use this path)
-router.post('/find', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const luxuryItem = (req.body.luxuryItem || req.body.originalProduct || '') as string;
+async function findFromBody(body: unknown, res: Response): Promise<void> {
+  const product = normalizeSearchProduct(body);
+  if (!product) {
+    res.status(400).json({ error: 'An analyzed product is required' });
+    return;
+  }
+  if (!isManusConfigured()) {
+    unavailable(res);
+    return;
+  }
 
-    if (!luxuryItem?.trim()) {
-      res.status(400).json({ error: 'luxuryItem is required' });
+  try {
+    const job = await startDupeSearch(product);
+    console.log('Dupe search accepted:', job.searchId);
+    res.status(202).json(job);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to find dupes';
+    console.error('Error finding dupes:', message);
+    if (isDupeSearchUnavailable(message)) {
+      unavailable(res);
       return;
     }
+    res.status(502).json({ error: 'Dupe search is temporarily unavailable' });
+  }
+}
 
-    const matches = await resolveDupeMatches(luxuryItem);
-    res.json(matches);
-  } catch (error: any) {
-    console.error('Error finding dupes:', error);
-    res.status(500).json({ error: error.message || 'Failed to find dupes' });
+router.get('/find/:searchId', async (req: Request, res: Response): Promise<void> => {
+  const searchId = String(req.params.searchId || '');
+  if (!/^[A-Za-z0-9_-]{8,128}$/.test(searchId)) {
+    res.status(404).json({ error: 'Dupe search is temporarily unavailable' });
+    return;
+  }
+  try {
+    const job = await readDupeSearch(searchId);
+    if (!job) {
+      res.status(404).json({ error: 'Dupe search is temporarily unavailable' });
+      return;
+    }
+    res.json(job);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to read dupe search';
+    console.error('Error reading dupe search:', message);
+    res.status(502).json({ error: 'Dupe search is temporarily unavailable' });
   }
 });
 
-// Find dupes for a product using AI (legacy body key)
+// Find dupes from an analyzed product. A typed luxury item is accepted as a name-only product.
+router.post('/find', async (req: Request, res: Response): Promise<void> => {
+  const body = req.body?.product
+    ? req.body
+    : { product: { name: req.body?.luxuryItem || req.body?.originalProduct || '' } };
+  await findFromBody(body, res);
+});
+
 router.post('/find-dupes', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const luxuryItem = (req.body.originalProduct || req.body.luxuryItem || '') as string;
-
-    if (!luxuryItem?.trim()) {
-      res.status(400).json({ error: 'Original product is required' });
-      return;
-    }
-
-    const matches = await resolveDupeMatches(luxuryItem);
-    res.json(matches);
-  } catch (error: any) {
-    console.error('Error finding dupes:', error);
-    res.status(500).json({ error: error.message || 'Failed to find dupes' });
-  }
+  const body = req.body?.product
+    ? req.body
+    : { product: { name: req.body?.originalProduct || req.body?.luxuryItem || '' } };
+  await findFromBody(body, res);
 });
 
 // Get detailed comparison between original and dupe
