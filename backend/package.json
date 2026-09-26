@@ -13,6 +13,9 @@
   "author": "",
   "license": "ISC",
   "description": "",
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "@azure/openai": "^1.0.0-beta.11",
     "@types/cors": "^2.8.17",
