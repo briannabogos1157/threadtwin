@@ -1,6 +1,16 @@
-import puppeteer, { Page } from 'puppeteer';
+import path from 'path';
+import puppeteer, { Browser, Page } from 'puppeteer';
+import { createExclusiveRunner } from '../lib/runExclusive';
 import { materialSummaryFrom } from './materialSummary';
 import { extractProductFacts } from './productFacts';
+
+/**
+ * @sparticuz/chromium writes /tmp/chromium and returns that path as soon as the
+ * file exists. A second launch in the same instance can spawn it while the
+ * first write is still open, which fails with ETXTBSY. One launch at a time
+ * lets the extract finish before the next spawn.
+ */
+const runServerlessChromium = createExclusiveRunner();
 
 interface ProductDetails {
   name: string;
@@ -73,15 +83,48 @@ class ProductScraper {
     }
   }
 
+  /**
+   * Local dev uses Puppeteer's downloaded Chrome. Vercel Linux functions do not
+   * include that browser, so they launch @sparticuz/chromium instead.
+   */
+  private useServerlessChromium(): boolean {
+    return process.platform === 'linux' && process.env.VERCEL === '1';
+  }
+
+  private async launchBrowser(): Promise<Browser> {
+    if (!this.useServerlessChromium()) {
+      return puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+    }
+
+    return runServerlessChromium(async () => {
+      const chromium = (await import('@sparticuz/chromium')).default;
+      const core = await import('puppeteer-core');
+      chromium.setGraphicsMode = false;
+      const executablePath = await chromium.executablePath();
+      const libraryDir = path.dirname(executablePath);
+      const currentLibraryPath = process.env.LD_LIBRARY_PATH;
+      if (!currentLibraryPath?.split(':').includes(libraryDir)) {
+        process.env.LD_LIBRARY_PATH = [libraryDir, currentLibraryPath].filter(Boolean).join(':');
+      }
+
+      const browser = await core.default.launch({
+        args: chromium.args,
+        executablePath,
+        headless: true,
+      });
+      return browser as unknown as Browser;
+    });
+  }
+
   async scrapeProduct(url: string): Promise<ProductDetails> {
     console.log('Starting to scrape URL:', url);
-    let browser;
+    let browser: Browser | undefined;
 
     try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+      browser = await this.launchBrowser();
 
       const page = await browser.newPage();
       await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36');
