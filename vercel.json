@@ -9,7 +9,7 @@
           "backend/prisma/**/*",
           "backend/node_modules/@sparticuz/chromium/**"
         ],
-        "maxDuration": 60,
+        "maxDuration": 300,
         "memory": 1769
       }
     },

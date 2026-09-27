@@ -237,18 +237,22 @@ async function manusV2(path: string, init?: RequestInit): Promise<unknown> {
 }
 
 /** v2 task.create with a JSON schema. Returns when Manus accepts the job. */
-export async function createManusDupeTask(prompt: string): Promise<string> {
+export async function createManusStructuredTask(prompt: string, schema: unknown): Promise<string> {
   const created = await manusV2('task.create', {
     method: 'POST',
     body: JSON.stringify({
       message: { content: prompt },
       agent_profile: 'standard',
       interactive_mode: false,
-      structured_output_schema: DUPE_OUTPUT_SCHEMA,
+      structured_output_schema: schema,
     }),
   }) as { task_id?: string };
   if (!created.task_id) throw new Error('Manus response missing task id');
   return created.task_id;
+}
+
+export async function createManusDupeTask(prompt: string): Promise<string> {
+  return createManusStructuredTask(prompt, DUPE_OUTPUT_SCHEMA);
 }
 
 function messageText(value: unknown): string {

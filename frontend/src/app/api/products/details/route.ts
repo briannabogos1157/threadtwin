@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const maxDuration = 300;
 import { getBackendCandidateUrls } from '@/lib/backendCandidates';
 import { formatMaterialLabel } from '@/lib/formatMaterialLabel';
 
@@ -74,6 +76,8 @@ function mapAnalyzeToProduct(
     fit: stringList(data.fit),
     construction: stringList(data.construction),
     care: stringList(data.careInstructions),
+    retailer: typeof data.retailer === 'string' ? data.retailer : undefined,
+    source: data.source === 'manus-fallback' ? 'manus-fallback' : undefined,
   };
 }
 

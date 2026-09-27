@@ -7,8 +7,10 @@ import path from 'path';
 import scraper from './services/scraper';
 import similarityScorer from './services/similarity';
 import { analyzeProductUrlWithManus, isManusConfigured } from './services/manus.service';
+import { enrichBlockedProductWithManus } from './services/blockedProductEnrichment';
+import { resolveScrapeFailure } from './services/analyzeBlocked';
+import { canonicalProductUrl } from './lib/canonicalProductUrl';
 import { dedupeInFlight } from './lib/dedupeInFlight';
-import { isRetailerBlock } from './lib/retailerBlock';
 import productRoutes from './routes/product.routes';
 import apiRoutes from './routes/api';
 
@@ -204,43 +206,19 @@ async function analyzeUncached(url: string): Promise<AnalyzeOutcome> {
     const scrapeMsg = scrapeErr instanceof Error ? scrapeErr.message : String(scrapeErr);
     console.warn('[analyze] scraper failed, message:', scrapeMsg);
 
-    if (isRetailerBlock(scrapeMsg)) {
-      return {
-        ok: false,
-        status: 502,
-        body: {
-          error: 'Failed to analyze product',
-          details: scrapeMsg,
-        },
-      };
-    }
-
-    if (!isManusConfigured()) {
-      return {
-        ok: false,
-        status: 502,
-        body: {
-          error: 'Failed to analyze product',
-          details: scrapeMsg,
-          hint: 'Add MANUS_API_KEY to backend/.env for automatic fallback when sites block scraping.',
-        },
-      };
-    }
-
-    try {
-      productDetails = await analyzeProductUrlWithManus(url);
-      console.log('[analyze] Manus fallback OK:', productDetails.name);
-    } catch (manusErr) {
-      const manusMsg = manusErr instanceof Error ? manusErr.message : String(manusErr);
-      console.error('[analyze] Manus fallback failed:', manusMsg);
-      return {
-        ok: false,
-        status: 502,
-        body: {
-          error: 'Failed to analyze product',
-          details: `${scrapeMsg} | Manus: ${manusMsg}`,
-        },
-      };
+    const recovered = await resolveScrapeFailure({
+      scrapeMessage: scrapeMsg,
+      canonicalUrl: url,
+      manusConfigured: isManusConfigured(),
+      enrichBlocked: enrichBlockedProductWithManus,
+      fallback: analyzeProductUrlWithManus,
+    });
+    if (!recovered.ok) return recovered;
+    productDetails = recovered.product;
+    if ('source' in recovered.product && recovered.product.source === 'manus-fallback') {
+      console.log('[analyze] blocked-page Manus fallback OK:', recovered.product.name);
+    } else {
+      console.log('[analyze] Manus fallback OK:', recovered.product.name);
     }
   }
 
@@ -259,18 +237,19 @@ app.post('/api/analyze', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    if (!validateUrl(url)) {
+    const canonicalUrl = canonicalProductUrl(url);
+    if (!canonicalUrl || !validateUrl(canonicalUrl)) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    const cachedResult = cache.get(url);
+    const cachedResult = cache.get(canonicalUrl);
     if (cachedResult) {
-      console.log('Cache hit for URL:', url);
+      console.log('Cache hit for URL:', canonicalUrl);
       return res.json(cachedResult);
     }
 
-    console.log('Analyzing product:', url);
-    const outcome = await dedupeInFlight(analyzeInflight, url, () => analyzeUncached(url));
+    console.log('Analyzing product:', canonicalUrl);
+    const outcome = await dedupeInFlight(analyzeInflight, canonicalUrl, () => analyzeUncached(canonicalUrl));
     if (!outcome.ok) {
       return res.status(outcome.status).json(outcome.body);
     }
@@ -294,19 +273,21 @@ app.post('/api/compare', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Both URLs are required' });
     }
 
-    if (!validateUrl(originalUrl) || !validateUrl(dupeUrl)) {
+    const canonicalOriginal = canonicalProductUrl(originalUrl);
+    const canonicalDupe = canonicalProductUrl(dupeUrl);
+    if (!canonicalOriginal || !canonicalDupe || !validateUrl(canonicalOriginal) || !validateUrl(canonicalDupe)) {
       return res.status(400).json({ error: 'Invalid URL format' });
     }
 
     // Check cache for both products
-    const cacheKey = `${originalUrl}:${dupeUrl}`;
+    const cacheKey = `${canonicalOriginal}:${canonicalDupe}`;
     const cachedResult = cache.get(cacheKey);
     if (cachedResult) {
       console.log('Cache hit for comparison:', cacheKey);
       return res.json(cachedResult);
     }
 
-    console.log('Comparing products:', { originalUrl, dupeUrl });
+    console.log('Comparing products:', { originalUrl: canonicalOriginal, dupeUrl: canonicalDupe });
 
     const COMPARE_MS = Number(process.env.COMPARE_TIMEOUT_MS) || 120_000;
     let compareDone = false;
@@ -321,8 +302,8 @@ app.post('/api/compare', async (req: Request, res: Response) => {
 
     try {
       const [original, dupe] = await Promise.all([
-        scraper.scrapeProduct(originalUrl),
-        scraper.scrapeProduct(dupeUrl),
+        scraper.scrapeProduct(canonicalOriginal),
+        scraper.scrapeProduct(canonicalDupe),
       ]);
 
       clearTimeout(compareTimeout);
@@ -341,8 +322,8 @@ app.post('/api/compare', async (req: Request, res: Response) => {
       const matchBreakdown = similarityScorer.calculateSimilarity(original, dupe);
 
       const result = {
-        original: { ...original, url: originalUrl },
-        dupe: { ...dupe, url: dupeUrl },
+        original: { ...original, url: canonicalOriginal },
+        dupe: { ...dupe, url: canonicalDupe },
         matchBreakdown,
       };
 

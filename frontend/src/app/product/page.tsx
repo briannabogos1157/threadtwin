@@ -6,6 +6,7 @@ import axios from 'axios';
 import '../../config/axios';
 import { useRouter } from 'next/navigation';
 import { blockStatusLine, isBlockedAnalysis, savedProductFromRecord } from '@/lib/blockedProduct';
+import { canonicalProductUrl } from '@/lib/canonicalProductUrl';
 import { dupeSearchBody } from '@/lib/dupeSearchRequest';
 import { formatMatchCategory, formatMatchCoverage, formatMatchHeadline, type MatchConfidence, type MatchStatus } from '@/lib/formatMatch';
 import {
@@ -222,7 +223,7 @@ export default function Product() {
 
       const productData = JSON.parse(storedProduct) as Record<string, unknown>;
       const rawUrl = String(productData.url ?? productData.productUrl ?? '').trim();
-      const shopUrl = normalizeShopUrl(rawUrl);
+      const shopUrl = canonicalProductUrl(normalizeShopUrl(rawUrl));
 
       if (!shopUrl) {
         apply(() => {
@@ -262,6 +263,7 @@ export default function Product() {
               return;
             }
             setOriginalProduct(result.product);
+            setRetailerUrl(result.product.url || shopUrl);
             rememberProduct(result.product);
             setRefreshBlocked(false);
             setError('');
