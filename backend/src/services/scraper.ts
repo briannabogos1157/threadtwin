@@ -1,7 +1,16 @@
 import path from 'path';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { createExclusiveRunner } from '../lib/runExclusive';
 import { materialSummaryFrom } from './materialSummary';
 import { extractProductFacts } from './productFacts';
+
+/**
+ * @sparticuz/chromium writes /tmp/chromium and returns that path as soon as the
+ * file exists. A second launch in the same instance can spawn it while the
+ * first write is still open, which fails with ETXTBSY. One launch at a time
+ * lets the extract finish before the next spawn.
+ */
+const runServerlessChromium = createExclusiveRunner();
 
 interface ProductDetails {
   name: string;
@@ -90,22 +99,24 @@ class ProductScraper {
       });
     }
 
-    const chromium = (await import('@sparticuz/chromium')).default;
-    const core = await import('puppeteer-core');
-    chromium.setGraphicsMode = false;
-    const executablePath = await chromium.executablePath();
-    const libraryDir = path.dirname(executablePath);
-    const currentLibraryPath = process.env.LD_LIBRARY_PATH;
-    if (!currentLibraryPath?.split(':').includes(libraryDir)) {
-      process.env.LD_LIBRARY_PATH = [libraryDir, currentLibraryPath].filter(Boolean).join(':');
-    }
+    return runServerlessChromium(async () => {
+      const chromium = (await import('@sparticuz/chromium')).default;
+      const core = await import('puppeteer-core');
+      chromium.setGraphicsMode = false;
+      const executablePath = await chromium.executablePath();
+      const libraryDir = path.dirname(executablePath);
+      const currentLibraryPath = process.env.LD_LIBRARY_PATH;
+      if (!currentLibraryPath?.split(':').includes(libraryDir)) {
+        process.env.LD_LIBRARY_PATH = [libraryDir, currentLibraryPath].filter(Boolean).join(':');
+      }
 
-    const browser = await core.default.launch({
-      args: chromium.args,
-      executablePath,
-      headless: true,
+      const browser = await core.default.launch({
+        args: chromium.args,
+        executablePath,
+        headless: true,
+      });
+      return browser as unknown as Browser;
     });
-    return browser as unknown as Browser;
   }
 
   async scrapeProduct(url: string): Promise<ProductDetails> {

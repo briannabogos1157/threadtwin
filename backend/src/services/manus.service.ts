@@ -46,6 +46,12 @@ function getApiKey(): string | undefined {
   return process.env.MANUS_API_KEY?.trim();
 }
 
+/** Drop the live key if a client error echoes the header value. */
+export function redactSecret(message: string, secret: string | undefined): string {
+  if (!secret || !message.includes(secret)) return message;
+  return message.split(secret).join('[redacted]');
+}
+
 function collectAssistantText(task: ManusTaskResponse): string {
   if (!task.output?.length) return '';
   const chunks: string[] = [];
@@ -204,22 +210,28 @@ const DUPE_OUTPUT_SCHEMA = {
 async function manusV2(path: string, init?: RequestInit): Promise<unknown> {
   const apiKey = getApiKey();
   if (!apiKey) throw new Error('MANUS_API_KEY is not configured');
-  const response = await fetch(`${MANUS_API.replace('/v1', '')}/v2/${path}`, {
-    ...init,
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'x-manus-api-key': apiKey,
-      ...(init?.headers || {}),
-    },
-    signal: AbortSignal.timeout(20_000),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${MANUS_API.replace('/v1', '')}/v2/${path}`, {
+      ...init,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'x-manus-api-key': apiKey,
+        ...(init?.headers || {}),
+      },
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(redactSecret(message, apiKey));
+  }
   const body = await response.json().catch(() => ({}));
   if (!response.ok || (body && typeof body === 'object' && (body as { ok?: boolean }).ok === false)) {
     const message = body && typeof body === 'object'
       ? JSON.stringify((body as { error?: unknown }).error || body)
       : '';
-    throw new Error(`Manus ${path.split('?')[0]} failed: ${response.status} ${message}`);
+    throw new Error(redactSecret(`Manus ${path.split('?')[0]} failed: ${response.status} ${message}`, apiKey));
   }
   return body;
 }
